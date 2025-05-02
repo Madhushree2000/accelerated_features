@@ -1,18 +1,17 @@
-"""
-	"XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
-	https://www.verlab.dcc.ufmg.br/descriptors/xfeat_cvpr24/
-"""
-
 import argparse
 import os
 import time
 import sys
+import glob
+import tqdm
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="XFeat training script.")
 
-    parser.add_argument('--megadepth_root_path', type=str, default='/ssd/guipotje/Data/MegaDepth',
-                        help='Path to the MegaDepth dataset root directory.')
+    parser.add_argument('--megadepth_paths', type=str, nargs='+', required=True,
+                        help='List of paths to the MegaDepth_v1 dataset parts. Example: "/path/part1 /path/part2 /path/part3 /path/part4"')
+    parser.add_argument('--megadepth_metadata_path', type=str, required=True,
+                        help='Path to the MegaDepth dataset metadata directory (contains the npz files).')
     parser.add_argument('--synthetic_root_path', type=str, default='/homeLocal/guipotje/sshfs/datasets/coco_20k',
                         help='Path to the synthetic dataset root directory.')
     parser.add_argument('--ckpt_save_path', type=str, required=True,
@@ -36,6 +35,8 @@ def parse_arguments():
                         help='If set, perform a dry run training with a mini-batch for sanity check.')
     parser.add_argument('--save_ckpt_every', type=int, default=500,
                         help='Save checkpoints every N steps. Default is 500.')
+    parser.add_argument('--path_switch_every', type=int, default=5_000,
+                        help='Switch between MegaDepth paths every N steps. Default is 5000.')
 
     args = parser.parse_args()
 
@@ -62,30 +63,29 @@ from modules.dataset.megadepth.megadepth import MegaDepthDataset
 from modules.dataset.megadepth import megadepth_warper
 from torch.utils.data import Dataset, DataLoader
 
-
 class Trainer():
     """
-        Class for training XFeat with default params as described in the paper.
-        We use a blend of MegaDepth (labeled) pairs with synthetically warped images (self-supervised).
-        The major bottleneck is to keep loading huge megadepth h5 files from disk, 
-        the network training itself is quite fast.
+    Class for training XFeat with default params as described in the paper.
+    We use a blend of MegaDepth (labeled) pairs with synthetically warped images (self-supervised).
+    Modified to handle multiple MegaDepth dataset paths seamlessly.
     """
 
-    def __init__(self, megadepth_root_path, 
+    def __init__(self, megadepth_paths, 
+                       megadepth_metadata_path,
                        synthetic_root_path, 
                        ckpt_save_path, 
                        model_name = 'xfeat_default',
                        batch_size = 10, n_steps = 160_000, lr= 3e-4, gamma_steplr=0.5, 
                        training_res = (800, 608), device_num="0", dry_run = False,
-                       save_ckpt_every = 500):
+                       save_ckpt_every = 500, path_switch_every = 5_000):
 
-        self.dev = torch.device ('cuda' if torch.cuda.is_available() else 'cpu')
+        self.dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net = XFeatModel().to(self.dev)
 
-        #Setup optimizer 
+        # Setup optimizer 
         self.batch_size = batch_size
         self.steps = n_steps
-        self.opt = optim.Adam(filter(lambda x: x.requires_grad, self.net.parameters()) , lr = lr)
+        self.opt = optim.Adam(filter(lambda x: x.requires_grad, self.net.parameters()), lr=lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.opt, step_size=30_000, gamma=gamma_steplr)
 
         ##################### Synthetic COCO INIT ##########################
@@ -110,21 +110,15 @@ class Trainer():
 
         ##################### MEGADEPTH INIT ##########################
         if model_name in ('xfeat_default', 'xfeat_megadepth'):
-            TRAIN_BASE_PATH = f"{megadepth_root_path}/train_data/megadepth_indices"
-            TRAINVAL_DATA_SOURCE = f"{megadepth_root_path}/MegaDepth_v1"
-
-            TRAIN_NPZ_ROOT = f"{TRAIN_BASE_PATH}/scene_info_0.1_0.7"
-
-            npz_paths = glob.glob(TRAIN_NPZ_ROOT + '/*.npz')[:]
-            data = torch.utils.data.ConcatDataset( [MegaDepthDataset(root_dir = TRAINVAL_DATA_SOURCE,
-                            npz_path = path) for path in tqdm.tqdm(npz_paths, desc="[MegaDepth] Loading metadata")] )
-
-            self.data_loader = DataLoader(data, 
-                                          batch_size=int(self.batch_size * 0.6 if model_name=='xfeat_default' else batch_size),
-                                          shuffle=True)
-            self.data_iter = iter(self.data_loader)
-
+            # Store all MegaDepth paths
+            self.megadepth_paths = megadepth_paths
+            self.current_path_index = 0
+            self.path_switch_every = path_switch_every
+            
+            # Initialize the MegaDepth data loader with the first path
+            self.setup_megadepth_loader(megadepth_metadata_path, self.megadepth_paths[self.current_path_index], model_name)
         else:
+            self.megadepth_paths = None
             self.data_iter = None
         ##################### MEGADEPTH INIT END #######################
 
@@ -136,10 +130,46 @@ class Trainer():
         self.ckpt_save_path = ckpt_save_path
         self.writer = SummaryWriter(ckpt_save_path + f'/logdir/{model_name}_' + time.strftime("%Y_%m_%d-%H_%M_%S"))
         self.model_name = model_name
+        self.steps_since_path_switch = 0
+        
+    def setup_megadepth_loader(self, metadata_path, dataset_path, model_name):
+        """Set up the MegaDepth data loader for a specific dataset path"""
+        print(f"Setting up MegaDepth data loader for path: {dataset_path}")
+        
+        TRAIN_BASE_PATH = metadata_path
+        TRAINVAL_DATA_SOURCE = dataset_path
 
+        TRAIN_NPZ_ROOT = f"{TRAIN_BASE_PATH}/scene_info_0.1_0.7"
+
+        npz_paths = glob.glob(TRAIN_NPZ_ROOT + '/*.npz')[:]
+        data = torch.utils.data.ConcatDataset([
+            MegaDepthDataset(root_dir=TRAINVAL_DATA_SOURCE, npz_path=path) 
+            for path in tqdm.tqdm(npz_paths, desc=f"[MegaDepth] Loading metadata for {dataset_path}")
+        ])
+
+        self.data_loader = DataLoader(
+            data, 
+            batch_size=int(self.batch_size * 0.6 if model_name=='xfeat_default' else self.batch_size),
+            shuffle=True
+        )
+        self.data_iter = iter(self.data_loader)
+        
+    def switch_to_next_megadepth_path(self, metadata_path):
+        """Switch to the next MegaDepth dataset path"""
+        if self.megadepth_paths is None:
+            return
+            
+        self.current_path_index = (self.current_path_index + 1) % len(self.megadepth_paths)
+        print(f"Switching to MegaDepth path {self.current_path_index + 1}/{len(self.megadepth_paths)}: {self.megadepth_paths[self.current_path_index]}")
+        
+        self.setup_megadepth_loader(
+            metadata_path, 
+            self.megadepth_paths[self.current_path_index],
+            self.model_name
+        )
+        self.steps_since_path_switch = 0
 
     def train(self):
-
         self.net.train()
 
         difficulty = 0.10
@@ -156,19 +186,23 @@ class Trainer():
         with tqdm.tqdm(total=self.steps) as pbar:
             for i in range(self.steps):
                 if not self.dry_run:
+                    # Check if we need to switch MegaDepth dataset path
+                    if (self.model_name in ('xfeat_default', 'xfeat_megadepth') and 
+                        self.steps_since_path_switch >= self.path_switch_every):
+                        self.switch_to_next_megadepth_path(args.megadepth_metadata_path)
+                    
                     if self.data_iter is not None:
                         try:
-                            # Get the next MD batch
+                            # Get the next MegaDepth batch
                             d = next(self.data_iter)
-
                         except StopIteration:
-                            print("End of DATASET!")
-                            # If StopIteration is raised, create a new iterator.
-                            self.data_iter = iter(self.data_loader)
+                            print("End of DATASET! Switching to next path.")
+                            # If StopIteration is raised, switch to next dataset path
+                            self.switch_to_next_megadepth_path(args.megadepth_metadata_path)
                             d = next(self.data_iter)
 
                     if self.augmentor is not None:
-                        #Grab synthetic data
+                        # Grab synthetic data
                         p1s, p2s, H1, H2 = make_batch(self.augmentor, difficulty)
 
                 if d is not None:
@@ -181,11 +215,11 @@ class Trainer():
 
                 if self.augmentor is not None:
                     h_coarse, w_coarse = p1s[0].shape[-2] // 8, p1s[0].shape[-1] // 8
-                    _ , positives_s_coarse = get_corresponding_pts(p1s, p2s, H1, H2, self.augmentor, h_coarse, w_coarse)
+                    _, positives_s_coarse = get_corresponding_pts(p1s, p2s, H1, H2, self.augmentor, h_coarse, w_coarse)
 
-                #Join megadepth & synthetic data
+                # Join megadepth & synthetic data
                 with torch.inference_mode():
-                    #RGB -> GRAY
+                    # RGB -> GRAY
                     if d is not None:
                         p1 = p1.mean(1, keepdim=True)
                         p2 = p2.mean(1, keepdim=True)
@@ -193,7 +227,7 @@ class Trainer():
                         p1s = p1s.mean(1, keepdim=True)
                         p2s = p2s.mean(1, keepdim=True)
 
-                    #Cat two batches
+                    # Cat two batches
                     if self.model_name in ('xfeat_default'):
                         p1 = torch.cat([p1s, p1], dim=0)
                         p2 = torch.cat([p2s, p2], dim=0)
@@ -204,7 +238,7 @@ class Trainer():
                     else:
                         positives_c = positives_md_coarse
 
-                #Check if batch is corrupted with too few correspondences
+                # Check if batch is corrupted with too few correspondences
                 is_corrupted = False
                 for p in positives_c:
                     if len(p) < 30:
@@ -213,26 +247,26 @@ class Trainer():
                 if is_corrupted:
                     continue
 
-                #Forward pass
+                # Forward pass
                 feats1, kpts1, hmap1 = self.net(p1)
                 feats2, kpts2, hmap2 = self.net(p2)
 
                 loss_items = []
 
                 for b in range(len(positives_c)):
-                    #Get positive correspondencies
+                    # Get positive correspondencies
                     pts1, pts2 = positives_c[b][:, :2], positives_c[b][:, 2:]
 
-                    #Grab features at corresponding idxs
+                    # Grab features at corresponding idxs
                     m1 = feats1[b, :, pts1[:,1].long(), pts1[:,0].long()].permute(1,0)
                     m2 = feats2[b, :, pts2[:,1].long(), pts2[:,0].long()].permute(1,0)
 
-                    #grab heatmaps at corresponding idxs
+                    # grab heatmaps at corresponding idxs
                     h1 = hmap1[b, 0, pts1[:,1].long(), pts1[:,0].long()]
                     h2 = hmap2[b, 0, pts2[:,1].long(), pts2[:,0].long()]
                     coords1 = self.net.fine_matcher(torch.cat([m1, m2], dim=-1))
 
-                    #Compute losses
+                    # Compute losses
                     loss_ds, conf = dual_softmax_loss(m1, m2)
                     loss_coords, acc_coords = coordinate_classification_loss(coords1, pts1, pts2, conf)
 
@@ -241,7 +275,7 @@ class Trainer():
                     loss_kp_pos = (loss_kp_pos1 + loss_kp_pos2)*2.0
                     acc_pos = (acc_pos1 + acc_pos2)/2
 
-                    loss_kp =  keypoint_loss(h1, conf) + keypoint_loss(h2, conf)
+                    loss_kp = keypoint_loss(h1, conf) + keypoint_loss(h2, conf)
 
                     loss_items.append(loss_ds.unsqueeze(0))
                     loss_items.append(loss_coords.unsqueeze(0))
@@ -257,7 +291,6 @@ class Trainer():
                 loss = torch.cat(loss_items, -1).mean()
                 loss_coarse = loss_ds.item()
                 loss_coord = loss_coords.item()
-                loss_coord = loss_coords.item()
                 loss_kp_pos = loss_kp_pos.item()
                 loss_l1 = loss_kp.item()
 
@@ -268,12 +301,20 @@ class Trainer():
                 self.opt.zero_grad()
                 self.scheduler.step()
 
+                # Increment steps since last path switch for MegaDepth
+                if self.model_name in ('xfeat_default', 'xfeat_megadepth'):
+                    self.steps_since_path_switch += 1
+
                 if (i+1) % self.save_ckpt_every == 0:
                     print('saving iter ', i+1)
                     torch.save(self.net.state_dict(), self.ckpt_save_path + f'/{self.model_name}_{i+1}.pth')
 
-                pbar.set_description( 'Loss: {:.4f} acc_c0 {:.3f} acc_c1 {:.3f} acc_f: {:.3f} loss_c: {:.3f} loss_f: {:.3f} loss_kp: {:.3f} #matches_c: {:d} loss_kp_pos: {:.3f} acc_kp_pos: {:.3f}'.format(
-                                                                        loss.item(), acc_coarse_0, acc_coarse, acc_coords, loss_coarse, loss_coord, loss_l1, nb_coarse, loss_kp_pos, acc_pos) )
+                pbar.set_description(
+                    f'Loss: {loss.item():.4f} acc_c0 {acc_coarse_0:.3f} acc_c1 {acc_coarse:.3f} '
+                    f'acc_f: {acc_coords:.3f} loss_c: {loss_coarse:.3f} loss_f: {loss_coord:.3f} '
+                    f'loss_kp: {loss_l1:.3f} #matches_c: {nb_coarse:d} loss_kp_pos: {loss_kp_pos:.3f} '
+                    f'acc_kp_pos: {acc_pos:.3f} | MD path: {self.current_path_index + 1}/{len(self.megadepth_paths)}'
+                )
                 pbar.update(1)
 
                 # Log metrics
@@ -287,13 +328,13 @@ class Trainer():
                 self.writer.add_scalar('Loss/reliability', loss_l1, i)
                 self.writer.add_scalar('Loss/keypoint_pos', loss_kp_pos, i)
                 self.writer.add_scalar('Count/matches_coarse', nb_coarse, i)
-
+                self.writer.add_scalar('Dataset/megadepth_path_index', self.current_path_index, i)
 
 
 if __name__ == '__main__':
-
     trainer = Trainer(
-        megadepth_root_path=args.megadepth_root_path, 
+        megadepth_paths=args.megadepth_paths,
+        megadepth_metadata_path=args.megadepth_metadata_path,
         synthetic_root_path=args.synthetic_root_path, 
         ckpt_save_path=args.ckpt_save_path,
         model_name=args.training_type,
@@ -304,8 +345,9 @@ if __name__ == '__main__':
         training_res=args.training_res,
         device_num=args.device_num,
         dry_run=args.dry_run,
-        save_ckpt_every=args.save_ckpt_every
+        save_ckpt_every=args.save_ckpt_every,
+        path_switch_every=args.path_switch_every
     )
 
-    #The most fun part
+    # The most fun part
     trainer.train()
