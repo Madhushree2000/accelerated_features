@@ -4,6 +4,7 @@ import time
 import sys
 import glob
 import tqdm
+import wandb  # Import wandb
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="XFeat training script.")
@@ -37,6 +38,14 @@ def parse_arguments():
                         help='Save checkpoints every N steps. Default is 500.')
     parser.add_argument('--path_switch_every', type=int, default=5_000,
                         help='Switch between MegaDepth paths every N steps. Default is 5000.')
+    parser.add_argument('--wandb_project', type=str, default='xfeat-training',
+                        help='Weights & Biases project name. Default is "xfeat-training".')
+    parser.add_argument('--wandb_entity', type=str, default=None,
+                        help='Weights & Biases entity (username or team name). Default is None (uses default entity).')
+    parser.add_argument('--wandb_run_name', type=str, default=None,
+                        help='Weights & Biases run name. Default is None (auto-generated name).')
+    parser.add_argument('--skip_wandb', action='store_true',
+                        help='If set, skip using Weights & Biases for logging.')
 
     args = parser.parse_args()
 
@@ -67,7 +76,7 @@ class Trainer():
     """
     Class for training XFeat with default params as described in the paper.
     We use a blend of MegaDepth (labeled) pairs with synthetically warped images (self-supervised).
-    Modified to handle multiple MegaDepth dataset paths seamlessly.
+    Modified to handle multiple MegaDepth dataset paths seamlessly and log to Weights & Biases.
     """
 
     def __init__(self, megadepth_paths, 
@@ -77,10 +86,38 @@ class Trainer():
                        model_name = 'xfeat_default',
                        batch_size = 10, n_steps = 160_000, lr= 3e-4, gamma_steplr=0.5, 
                        training_res = (800, 608), device_num="0", dry_run = False,
-                       save_ckpt_every = 500, path_switch_every = 5_000):
+                       save_ckpt_every = 500, path_switch_every = 5_000,
+                       use_wandb = True, wandb_project = 'xfeat-training',
+                       wandb_entity = None, wandb_run_name = None):
 
         self.dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net = XFeatModel().to(self.dev)
+        
+        # Setup Weights & Biases
+        self.use_wandb = use_wandb
+        if self.use_wandb:
+            wandb_config = {
+                "model_name": model_name,
+                "batch_size": batch_size,
+                "n_steps": n_steps,
+                "learning_rate": lr,
+                "gamma_steplr": gamma_steplr,
+                "training_resolution": training_res,
+                "save_checkpoint_every": save_ckpt_every,
+                "path_switch_every": path_switch_every,
+                "megadepth_paths_count": len(megadepth_paths),
+                "device": device_num
+            }
+            
+            self.run = wandb.init(
+                project=wandb_project,
+                entity=wandb_entity,
+                name=wandb_run_name or f"{model_name}_{time.strftime('%Y_%m_%d-%H_%M_%S')}",
+                config=wandb_config
+            )
+            
+            # Log model architecture
+            wandb.watch(self.net, log="all", log_freq=100)
 
         # Setup optimizer 
         self.batch_size = batch_size
@@ -168,6 +205,16 @@ class Trainer():
             self.model_name
         )
         self.steps_since_path_switch = 0
+        
+    def save_checkpoint(self, step):
+        """Save model checkpoint both locally and to wandb"""
+        checkpoint_path = f"{self.ckpt_save_path}/{self.model_name}_{step}.pth"
+        torch.save(self.net.state_dict(), checkpoint_path)
+        
+        if self.use_wandb:
+            wandb.save(checkpoint_path)
+            
+        print(f"Saved checkpoint at step {step}")
 
     def train(self):
         self.net.train()
@@ -306,8 +353,10 @@ class Trainer():
                     self.steps_since_path_switch += 1
 
                 if (i+1) % self.save_ckpt_every == 0:
-                    print('saving iter ', i+1)
-                    torch.save(self.net.state_dict(), self.ckpt_save_path + f'/{self.model_name}_{i+1}.pth')
+                    self.save_checkpoint(i+1)
+
+                # Calculate learning rate
+                current_lr = self.scheduler.get_last_lr()[0]
 
                 pbar.set_description(
                     f'Loss: {loss.item():.4f} acc_c0 {acc_coarse_0:.3f} acc_c1 {acc_coarse:.3f} '
@@ -317,7 +366,7 @@ class Trainer():
                 )
                 pbar.update(1)
 
-                # Log metrics
+                # Log metrics to TensorBoard
                 self.writer.add_scalar('Loss/total', loss.item(), i)
                 self.writer.add_scalar('Accuracy/coarse_synth', acc_coarse_0, i)
                 self.writer.add_scalar('Accuracy/coarse_mdepth', acc_coarse, i)
@@ -329,9 +378,49 @@ class Trainer():
                 self.writer.add_scalar('Loss/keypoint_pos', loss_kp_pos, i)
                 self.writer.add_scalar('Count/matches_coarse', nb_coarse, i)
                 self.writer.add_scalar('Dataset/megadepth_path_index', self.current_path_index, i)
+                self.writer.add_scalar('Training/learning_rate', current_lr, i)
+                
+                # Log metrics to Weights & Biases
+                if self.use_wandb:
+                    wandb_log = {
+                        'train/loss': loss.item(),
+                        'train/loss_coarse': loss_coarse,
+                        'train/loss_fine': loss_coord,
+                        'train/loss_keypoint': loss_l1,
+                        'train/loss_keypoint_pos': loss_kp_pos,
+                        'train/accuracy_coarse_synth': acc_coarse_0,
+                        'train/accuracy_coarse_mdepth': acc_coarse,
+                        'train/accuracy_fine_mdepth': acc_coords,
+                        'train/accuracy_keypoint_pos': acc_pos,
+                        'train/matches_coarse_count': nb_coarse,
+                        'train/learning_rate': current_lr,
+                        'dataset/megadepth_path_index': self.current_path_index,
+                        'dataset/step_in_current_path': self.steps_since_path_switch
+                    }
+                    wandb.log(wandb_log, step=i)
+
+        # Save final model checkpoint
+        self.save_checkpoint(self.steps)
+        
+        # Close wandb run
+        if self.use_wandb:
+            wandb.finish()
 
 
 if __name__ == '__main__':
+    # Initialize Weights & Biases if not skipped
+    if not args.skip_wandb:
+        # Login to Weights & Biases (only needed once)
+        try:
+            import wandb
+            # Quietly log in or use cached credentials
+            wandb.login(anonymous="allow")
+            print("Successfully logged in to Weights & Biases")
+        except Exception as e:
+            print(f"Failed to log in to Weights & Biases: {e}")
+            print("Setting skip_wandb to True")
+            args.skip_wandb = True
+    
     trainer = Trainer(
         megadepth_paths=args.megadepth_paths,
         megadepth_metadata_path=args.megadepth_metadata_path,
@@ -346,7 +435,11 @@ if __name__ == '__main__':
         device_num=args.device_num,
         dry_run=args.dry_run,
         save_ckpt_every=args.save_ckpt_every,
-        path_switch_every=args.path_switch_every
+        path_switch_every=args.path_switch_every,
+        use_wandb=not args.skip_wandb,
+        wandb_project=args.wandb_project,
+        wandb_entity=args.wandb_entity,
+        wandb_run_name=args.wandb_run_name
     )
 
     # The most fun part
