@@ -1,9 +1,11 @@
 """
-	"XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
-	https://www.verlab.dcc.ufmg.br/descriptors/xfeat_cvpr24/
+    "XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
+    https://www.verlab.dcc.ufmg.br/descriptors/xfeat_cvpr24/
 
     MegaDepth data handling was adapted from 
     LoFTR official code: https://github.com/zju3dv/LoFTR/blob/master/src/datasets/megadepth.py
+    
+    Modified to dynamically select the correct dataset part based on scene ID.
 """
 
 import os.path as osp
@@ -20,13 +22,13 @@ import pdb, tqdm, os
 
 class MegaDepthDataset(Dataset):
     def __init__(self,
-                 root_dir,
+                 root_dirs,  # Now takes a dictionary of root directories mapped to scene ID ranges
                  npz_path,
                  mode='train',
-                 min_overlap_score = 0.3, #0.3,
-                 max_overlap_score = 1.0, #1,
-                 load_depth = True,
-                 img_resize = (800,608), #or None
+                 min_overlap_score=0.3,
+                 max_overlap_score=1.0,
+                 load_depth=True,
+                 img_resize=(800,608),
                  df=32,
                  img_padding=False,
                  depth_padding=True,
@@ -34,24 +36,29 @@ class MegaDepthDataset(Dataset):
                  **kwargs):
         """
         Manage one scene(npz_path) of MegaDepth dataset.
+        Dynamically selects the correct dataset part based on scene ID.
         
         Args:
-            root_dir (str): megadepth root directory that has `phoenix`.
+            root_dirs (dict): Dictionary mapping scene ID ranges to root directories.
+                              Format: {(start_id, end_id): '/path/to/MegaDepth_pX'}.
             npz_path (str): {scene_id}.npz path. This contains image pair information of a scene.
             mode (str): options are ['train', 'val', 'test']
-            min_overlap_score (float): how much a pair should have in common. In range of [0, 1]. Set to 0 when testing.
-            img_resize (int, optional): the longer edge of resized images. None for no resize. 640 is recommended.
-                                        This is useful during training with batches and testing with memory intensive algorithms.
-            df (int, optional): image size division factor. NOTE: this will change the final image size after img_resize.
-            img_padding (bool): If set to 'True', zero-pad the image to squared size. This is useful during training.
-            depth_padding (bool): If set to 'True', zero-pad depthmap to (2000, 2000). This is useful during training.
+            min_overlap_score (float): how much a pair should have in common. Set to 0 when testing.
+            img_resize (tuple): the resolution to resize images to (width, height).
+            df (int, optional): image size division factor.
+            img_padding (bool): If set to 'True', zero-pad the image to squared size.
+            depth_padding (bool): If set to 'True', zero-pad depthmap to (2000, 2000).
             augment_fn (callable, optional): augments images with pre-defined visual effects.
         """
         super().__init__()
-        self.root_dir = root_dir
+        self.root_dirs = root_dirs
         self.mode = mode
-        self.scene_id = npz_path.split('.')[0]
+        self.scene_id = int(osp.basename(npz_path).split('.')[0])
         self.load_depth = load_depth
+        
+        # Determine the correct root directory for this scene
+        self.root_dir = self._get_correct_root_dir()
+        
         # prepare scene_info and pair_info
         if mode == 'test' and min_overlap_score != 0:
             min_overlap_score = 0
@@ -62,7 +69,7 @@ class MegaDepthDataset(Dataset):
 
         # parameters for image resizing, padding and depthmap padding
         if mode == 'train':
-            assert img_resize is not None #and img_padding and depth_padding
+            assert img_resize is not None
 
         self.img_resize = img_resize
         self.df = df
@@ -72,13 +79,22 @@ class MegaDepthDataset(Dataset):
         # for training LoFTR
         self.augment_fn = augment_fn if mode == 'train' else None
         self.coarse_scale = getattr(kwargs, 'coarse_scale', 0.125)
-        #pdb.set_trace()
+        
         for idx in range(len(self.scene_info['image_paths'])):
             self.scene_info['image_paths'][idx] = fix_path_from_d2net(self.scene_info['image_paths'][idx])
 
         for idx in range(len(self.scene_info['depth_paths'])):
             self.scene_info['depth_paths'][idx] = fix_path_from_d2net(self.scene_info['depth_paths'][idx])
 
+    def _get_correct_root_dir(self):
+        """
+        Determine the correct root directory based on the scene ID.
+        """
+        for (start_id, end_id), root_dir in self.root_dirs.items():
+            if start_id <= self.scene_id <= end_id:
+                return root_dir
+        # Default to the first root directory if no match is found
+        return list(self.root_dirs.values())[0]
 
     def __len__(self):
         return len(self.pair_infos)
@@ -90,13 +106,11 @@ class MegaDepthDataset(Dataset):
         img_name0 = osp.join(self.root_dir, self.scene_info['image_paths'][idx0])
         img_name1 = osp.join(self.root_dir, self.scene_info['image_paths'][idx1])
         
-        # TODO: Support augmentation & handle seeds for each worker correctly.
+        # Handle augmentation
         image0, mask0, scale0 = read_megadepth_gray(
             img_name0, self.img_resize, self.df, self.img_padding, None)
-            # np.random.choice([self.augment_fn, None], p=[0.5, 0.5]))
         image1, mask1, scale1 = read_megadepth_gray(
             img_name1, self.img_resize, self.df, self.img_padding, None)
-            # np.random.choice([self.augment_fn, None], p=[0.5, 0.5]))
 
         if self.load_depth:
             # read depth. shape: (h, w)

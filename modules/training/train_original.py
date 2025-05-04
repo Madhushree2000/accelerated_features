@@ -36,9 +36,8 @@ def parse_arguments():
                         help='If set, perform a dry run training with a mini-batch for sanity check.')
     parser.add_argument('--save_ckpt_every', type=int, default=500,
                         help='Save checkpoints every N steps. Default is 500.')
-    # No longer needed as datasets are now mapped based on scene IDs
-    # parser.add_argument('--path_switch_every', type=int, default=5_000,
-    #                     help='Switch between MegaDepth paths every N steps. Default is 5000.')
+    parser.add_argument('--path_switch_every', type=int, default=5_000,
+                        help='Switch between MegaDepth paths every N steps. Default is 5000.')
     parser.add_argument('--wandb_project', type=str, default='xfeat-training',
                         help='Weights & Biases project name. Default is "xfeat-training".')
     parser.add_argument('--wandb_entity', type=str, default=None,
@@ -77,7 +76,7 @@ class Trainer():
     """
     Class for training XFeat with default params as described in the paper.
     We use a blend of MegaDepth (labeled) pairs with synthetically warped images (self-supervised).
-    Modified to handle multiple MegaDepth dataset parts using a scene ID mapping system.
+    Modified to handle multiple MegaDepth dataset paths seamlessly and log to Weights & Biases.
     """
 
     def __init__(self, megadepth_paths, 
@@ -87,7 +86,8 @@ class Trainer():
                        model_name = 'xfeat_default',
                        batch_size = 10, n_steps = 160_000, lr= 3e-4, gamma_steplr=0.5, 
                        training_res = (800, 608), device_num="0", dry_run = False,
-                       save_ckpt_every = 500, use_wandb = True, wandb_project = 'xfeat-training',
+                       save_ckpt_every = 500, path_switch_every = 5_000,
+                       use_wandb = True, wandb_project = 'xfeat-training',
                        wandb_entity = None, wandb_run_name = None):
 
         self.dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -104,6 +104,7 @@ class Trainer():
                 "gamma_steplr": gamma_steplr,
                 "training_resolution": training_res,
                 "save_checkpoint_every": save_ckpt_every,
+                "path_switch_every": path_switch_every,
                 "megadepth_paths_count": len(megadepth_paths),
                 "device": device_num
             }
@@ -146,13 +147,15 @@ class Trainer():
 
         ##################### MEGADEPTH INIT ##########################
         if model_name in ('xfeat_default', 'xfeat_megadepth'):
-            # Create a mapping of scene ID ranges to dataset paths
-            self.root_dirs = self.create_scene_id_mapping(megadepth_paths)
+            # Store all MegaDepth paths
+            self.megadepth_paths = megadepth_paths
+            self.current_path_index = 0
+            self.path_switch_every = path_switch_every
             
-            # Initialize the MegaDepth data loader with scene ID mapping
-            self.setup_megadepth_loader(megadepth_metadata_path, model_name)
+            # Initialize the MegaDepth data loader with the first path
+            self.setup_megadepth_loader(megadepth_metadata_path, self.megadepth_paths[self.current_path_index], model_name)
         else:
-            self.root_dirs = None
+            self.megadepth_paths = None
             self.data_iter = None
         ##################### MEGADEPTH INIT END #######################
 
@@ -164,49 +167,21 @@ class Trainer():
         self.ckpt_save_path = ckpt_save_path
         self.writer = SummaryWriter(ckpt_save_path + f'/logdir/{model_name}_' + time.strftime("%Y_%m_%d-%H_%M_%S"))
         self.model_name = model_name
+        self.steps_since_path_switch = 0
         
-    def create_scene_id_mapping(self, megadepth_paths):
-        """Create a mapping from scene ID ranges to root directories"""
-        # MegaDepth dataset is arranged in parts as follows:
-        # MegaDepth_p1: 0000 to 0047
-        # MegaDepth_p2: 0048 to 0159
-        # MegaDepth_p3: 0160 to 0326
-        # MegaDepth_p4: 0327 to 5018
-        
-        if len(megadepth_paths) != 4:
-            print(f"Warning: Expected 4 MegaDepth paths, got {len(megadepth_paths)}. Will map them based on standard scene ID ranges.")
-        
-        scene_ranges = [
-            (0, 47),      # MegaDepth_p1
-            (48, 159),    # MegaDepth_p2
-            (160, 326),   # MegaDepth_p3
-            (327, 5018)   # MegaDepth_p4
-        ]
-        
-        root_dirs = {}
-        for i, path in enumerate(megadepth_paths):
-            if i < len(scene_ranges):
-                root_dirs[scene_ranges[i]] = path
-            
-        print("Scene ID to MegaDepth path mapping:")
-        for (start, end), path in root_dirs.items():
-            print(f"  Scene IDs {start:04d} to {end:04d} -> {path}")
-            
-        return root_dirs
-        
-    def setup_megadepth_loader(self, metadata_path, model_name):
-        """Set up the MegaDepth data loader with scene ID to directory mapping"""
-        print(f"Setting up MegaDepth data loader with scene ID mapping")
+    def setup_megadepth_loader(self, metadata_path, dataset_path, model_name):
+        """Set up the MegaDepth data loader for a specific dataset path"""
+        print(f"Setting up MegaDepth data loader for path: {dataset_path}")
         
         TRAIN_BASE_PATH = metadata_path
+        TRAINVAL_DATA_SOURCE = dataset_path
+
         TRAIN_NPZ_ROOT = f"{TRAIN_BASE_PATH}/scene_info_0.1_0.7"
 
         npz_paths = glob.glob(TRAIN_NPZ_ROOT + '/*.npz')[:]
-        
-        # Pass the root_dirs mapping to the MegaDepthDataset
         data = torch.utils.data.ConcatDataset([
-            MegaDepthDataset(root_dirs=self.root_dirs, npz_path=path) 
-            for path in tqdm.tqdm(npz_paths, desc=f"[MegaDepth] Loading metadata")
+            MegaDepthDataset(root_dir=TRAINVAL_DATA_SOURCE, npz_path=path) 
+            for path in tqdm.tqdm(npz_paths, desc=f"[MegaDepth] Loading metadata for {dataset_path}")
         ])
 
         self.data_loader = DataLoader(
@@ -215,6 +190,21 @@ class Trainer():
             shuffle=True
         )
         self.data_iter = iter(self.data_loader)
+        
+    def switch_to_next_megadepth_path(self, metadata_path):
+        """Switch to the next MegaDepth dataset path"""
+        if self.megadepth_paths is None:
+            return
+            
+        self.current_path_index = (self.current_path_index + 1) % len(self.megadepth_paths)
+        print(f"Switching to MegaDepth path {self.current_path_index + 1}/{len(self.megadepth_paths)}: {self.megadepth_paths[self.current_path_index]}")
+        
+        self.setup_megadepth_loader(
+            metadata_path, 
+            self.megadepth_paths[self.current_path_index],
+            self.model_name
+        )
+        self.steps_since_path_switch = 0
         
     def save_checkpoint(self, step):
         """Save model checkpoint both locally and to wandb"""
@@ -243,14 +233,19 @@ class Trainer():
         with tqdm.tqdm(total=self.steps) as pbar:
             for i in range(self.steps):
                 if not self.dry_run:
+                    # Check if we need to switch MegaDepth dataset path
+                    if (self.model_name in ('xfeat_default', 'xfeat_megadepth') and 
+                        self.steps_since_path_switch >= self.path_switch_every):
+                        self.switch_to_next_megadepth_path(args.megadepth_metadata_path)
+                    
                     if self.data_iter is not None:
                         try:
                             # Get the next MegaDepth batch
                             d = next(self.data_iter)
                         except StopIteration:
-                            print("End of dataset. Reinitializing iterator.")
-                            # If StopIteration is raised, create a new iterator
-                            self.data_iter = iter(self.data_loader)
+                            print("End of DATASET! Switching to next path.")
+                            # If StopIteration is raised, switch to next dataset path
+                            self.switch_to_next_megadepth_path(args.megadepth_metadata_path)
                             d = next(self.data_iter)
 
                     if self.augmentor is not None:
@@ -353,20 +348,21 @@ class Trainer():
                 self.opt.zero_grad()
                 self.scheduler.step()
 
+                # Increment steps since last path switch for MegaDepth
+                if self.model_name in ('xfeat_default', 'xfeat_megadepth'):
+                    self.steps_since_path_switch += 1
+
                 if (i+1) % self.save_ckpt_every == 0:
                     self.save_checkpoint(i+1)
 
                 # Calculate learning rate
                 current_lr = self.scheduler.get_last_lr()[0]
 
-                # Get current scene ID if available in the batch
-                scene_id = d.get('scene_id', [-1])[0] if d is not None else -1
-
                 pbar.set_description(
                     f'Loss: {loss.item():.4f} acc_c0 {acc_coarse_0:.3f} acc_c1 {acc_coarse:.3f} '
                     f'acc_f: {acc_coords:.3f} loss_c: {loss_coarse:.3f} loss_f: {loss_coord:.3f} '
                     f'loss_kp: {loss_l1:.3f} #matches_c: {nb_coarse:d} loss_kp_pos: {loss_kp_pos:.3f} '
-                    f'acc_kp_pos: {acc_pos:.3f} | Scene ID: {scene_id}'
+                    f'acc_kp_pos: {acc_pos:.3f} | MD path: {self.current_path_index + 1}/{len(self.megadepth_paths)}'
                 )
                 pbar.update(1)
 
@@ -381,7 +377,7 @@ class Trainer():
                 self.writer.add_scalar('Loss/reliability', loss_l1, i)
                 self.writer.add_scalar('Loss/keypoint_pos', loss_kp_pos, i)
                 self.writer.add_scalar('Count/matches_coarse', nb_coarse, i)
-                self.writer.add_scalar('Dataset/scene_id', scene_id, i)
+                self.writer.add_scalar('Dataset/megadepth_path_index', self.current_path_index, i)
                 self.writer.add_scalar('Training/learning_rate', current_lr, i)
                 
                 # Log metrics to Weights & Biases
@@ -398,7 +394,8 @@ class Trainer():
                         'train/accuracy_keypoint_pos': acc_pos,
                         'train/matches_coarse_count': nb_coarse,
                         'train/learning_rate': current_lr,
-                        'dataset/scene_id': scene_id
+                        'dataset/megadepth_path_index': self.current_path_index,
+                        'dataset/step_in_current_path': self.steps_since_path_switch
                     }
                     wandb.log(wandb_log, step=i)
 
@@ -438,6 +435,7 @@ if __name__ == '__main__':
         device_num=args.device_num,
         dry_run=args.dry_run,
         save_ckpt_every=args.save_ckpt_every,
+        path_switch_every=args.path_switch_every,
         use_wandb=not args.skip_wandb,
         wandb_project=args.wandb_project,
         wandb_entity=args.wandb_entity,
