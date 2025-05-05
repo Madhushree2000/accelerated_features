@@ -148,6 +148,8 @@ class Trainer():
         if model_name in ('xfeat_default', 'xfeat_megadepth'):
             # Create a mapping of scene ID ranges to dataset paths
             self.root_dirs = self.create_scene_id_mapping(megadepth_paths)
+
+            print(f"Root directory{self.root_dirs}")
             
             # Initialize the MegaDepth data loader with scene ID mapping
             self.setup_megadepth_loader(megadepth_metadata_path, model_name)
