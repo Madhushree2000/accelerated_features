@@ -210,7 +210,25 @@ class Trainer():
             MegaDepthDataset(root_dirs=self.root_dirs, npz_path=path) 
             for path in tqdm.tqdm(npz_paths, desc=f"[MegaDepth] Loading metadata")
         ])
-        print(f"Megadepth metadata loading finished. Data: {data}")
+        # Print more detailed information about the dataset
+        print(f"Megadepth metadata loading finished. Total samples: {len(data)}")
+        print(f"Dataset type: {type(data)}")
+        print(f"Number of individual datasets: {len(data.datasets)}")
+        
+        # Print sample information from the first few items
+        print("Sample data examples:")
+        for i in range(min(3, len(data))):  # Print first 3 samples or fewer if dataset is smaller
+            sample = data[i]
+            print(f"Sample {i}:")
+            for key, value in sample.items():
+                if isinstance(value, torch.Tensor):
+                    print(f"  {key}: Tensor shape {value.shape}, dtype {value.dtype}")
+                elif isinstance(value, np.ndarray):
+                    print(f"  {key}: Array shape {value.shape}, dtype {value.dtype}")
+                elif isinstance(value, (list, tuple)):
+                    print(f"  {key}: {type(value)} of length {len(value)}")
+                else:
+                    print(f"  {key}: {type(value)}")
         self.data_loader = DataLoader(
             data, 
             batch_size=int(self.batch_size * 0.6 if model_name=='xfeat_default' else self.batch_size),
