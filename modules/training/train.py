@@ -177,10 +177,10 @@ class Trainer():
             print(f"Warning: Expected 4 MegaDepth paths, got {len(megadepth_paths)}. Will map them based on standard scene ID ranges.")
         
         scene_ranges = [
-            (0, 47),      # MegaDepth_p1
-            (48, 159),    # MegaDepth_p2
-            (160, 326),   # MegaDepth_p3
-            (327, 5018)   # MegaDepth_p4
+            (0000, 0047),  # MegaDepth_p1
+            (0048, 0159),  # MegaDepth_p2
+            (0160, 0326),  # MegaDepth_p3
+            (0327, 5018)   # MegaDepth_p4
         ]
         
         root_dirs = {}
