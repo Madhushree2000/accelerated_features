@@ -89,12 +89,24 @@ class MegaDepthDataset(Dataset):
     def _get_correct_root_dir(self):
         """
         Determine the correct root directory based on the scene ID.
+        Enhanced to better handle path resolution and provide debugging information.
         """
-        for (start_id, end_id), root_dir in self.root_dirs.items():
-            if start_id <= self.scene_id <= end_id:
-                # print(f"scene {self.scene_id} belongs to {(start_id, end_id)} in path {root_dir}")
+        scene_id = self.scene_id
+        
+        # First, check if the scene directory exists directly in any root
+        scene_dir = f"{scene_id:04d}"
+        for _, root_dir in self.root_dirs.items():
+            potential_path = osp.join(root_dir, scene_dir)
+            if osp.exists(potential_path):
                 return root_dir
-        # Default to the first root directory if no match is found
+        
+        # If not found directly, use the range-based mapping
+        for (start_id, end_id), root_dir in self.root_dirs.items():
+            if start_id <= scene_id <= end_id:
+                return root_dir
+        
+        # If no match found, default to the first root directory
+        print(f"WARNING: No matching directory for scene ID {scene_id:04d}")
         return list(self.root_dirs.values())[0]
 
     def __len__(self):
@@ -104,14 +116,45 @@ class MegaDepthDataset(Dataset):
         (idx0, idx1), overlap_score, central_matches = self.pair_infos[idx % len(self)]
 
         # read grayscale image and mask. (1, h, w) and (h, w)
-        img_name0 = osp.join(self.root_dir, self.scene_info['image_paths'][idx0])
-        img_name1 = osp.join(self.root_dir, self.scene_info['image_paths'][idx1])
+        # Get image paths
+        img_path0 = self.scene_info['image_paths'][idx0]
+        img_path1 = self.scene_info['image_paths'][idx1]
         
-        # Handle augmentation
-        image0, mask0, scale0 = read_megadepth_gray(
-            img_name0, self.img_resize, self.df, self.img_padding, None)
-        image1, mask1, scale1 = read_megadepth_gray(
-            img_name1, self.img_resize, self.df, self.img_padding, None)
+        # Construct full paths
+        img_name0 = osp.join(self.root_dir, img_path0)
+        img_name1 = osp.join(self.root_dir, img_path1)
+
+        # Check if files exist, try alternative directories if not
+        if not osp.exists(img_name0):
+            for _, root in self.root_dirs.items():
+                alt_path = osp.join(root, img_path0)
+                if osp.exists(alt_path):
+                    img_name0 = alt_path
+                    break
+        
+        if not osp.exists(img_name1):
+            for _, root in self.root_dirs.items():
+                alt_path = osp.join(root, img_path1)
+                if osp.exists(alt_path):
+                    img_name1 = alt_path
+                    break
+
+        # Handle image loading with better error handling
+        try:
+            # Handle augmentation
+            image0, mask0, scale0 = read_megadepth_gray(
+                img_name0, self.img_resize, self.df, self.img_padding, None)
+            image1, mask1, scale1 = read_megadepth_gray(
+                img_name1, self.img_resize, self.df, self.img_padding, None)
+        except Exception as e:
+            print(f"Error loading images for scene {self.scene_id:04d}:")
+            print(f"  Path 1: {img_name0}")
+            print(f"  Path 2: {img_name1}")
+            print(f"  Error: {e}")
+            # Return an empty or placeholder sample
+            raise RuntimeError(f"Failed to load images for scene {self.scene_id:04d}")
+        
+        
 
         if self.load_depth:
             # read depth. shape: (h, w)

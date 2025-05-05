@@ -1,5 +1,6 @@
 import argparse
 import os
+import os.path as osp
 import time
 import sys
 import glob
@@ -168,20 +169,12 @@ class Trainer():
         self.model_name = model_name
         
     def create_scene_id_mapping(self, megadepth_paths):
-        """Create a mapping from scene ID ranges to root directories"""
-        # MegaDepth dataset is arranged in parts as follows:
-        # MegaDepth_p1: 0000 to 0047
-        # MegaDepth_p2: 0048 to 0159
-        # MegaDepth_p3: 0160 to 0326
-        # MegaDepth_p4: 0327 to 5018
-        
-        if len(megadepth_paths) != 4:
-            print(f"Warning: Expected 4 MegaDepth paths, got {len(megadepth_paths)}. Will map them based on standard scene ID ranges.")
-        
+        """Create a mapping from scene ID ranges to root directories with directory verification"""
+        # Standard MegaDepth dataset ranges
         scene_ranges = [
-            (0000, 47),  # MegaDepth_p1
-            (48, 159),  # MegaDepth_p2
-            (160, 326),  # MegaDepth_p3
+            (0, 47),      # MegaDepth_p1
+            (48, 159),    # MegaDepth_p2
+            (160, 326),   # MegaDepth_p3
             (327, 5018)   # MegaDepth_p4
         ]
         
@@ -189,11 +182,17 @@ class Trainer():
         for i, path in enumerate(megadepth_paths):
             if i < len(scene_ranges):
                 root_dirs[scene_ranges[i]] = path
-            
-        print("Scene ID to MegaDepth path mapping:")
-        for (start, end), path in root_dirs.items():
-            print(f"  Scene IDs {start:04d} to {end:04d} -> {path}")
-            
+                
+                # Verify some scene directories exist in this path
+                start_id, end_id = scene_ranges[i]
+                found_dirs = []
+                for scene_id in range(start_id, min(start_id + 10, end_id + 1)):
+                    scene_dir = f"{scene_id:04d}"
+                    if osp.exists(osp.join(path, scene_dir)):
+                        found_dirs.append(scene_id)
+                
+                print(f"Path {path} (range {start_id:04d}-{end_id:04d}) contains scenes: {found_dirs}")
+        
         return root_dirs
         
     def setup_megadepth_loader(self, metadata_path, model_name):
@@ -206,29 +205,41 @@ class Trainer():
         npz_paths = glob.glob(TRAIN_NPZ_ROOT + '/*.npz')[:]
         
         # Pass the root_dirs mapping to the MegaDepthDataset
-        data = torch.utils.data.ConcatDataset([
-            MegaDepthDataset(root_dirs=self.root_dirs, npz_path=path) 
-            for path in tqdm.tqdm(npz_paths, desc=f"[MegaDepth] Loading metadata")
-        ])
-        # Print more detailed information about the dataset
+        datasets = []
+        for path in tqdm.tqdm(npz_paths, desc=f"[MegaDepth] Loading metadata"):
+            try:
+                # Create dataset for this NPZ file
+                dataset = MegaDepthDataset(root_dirs=self.root_dirs, npz_path=path)
+                datasets.append(dataset)
+            except Exception as e:
+                print(f"Error loading dataset from {path}: {e}")
+                continue
+        
+        data = torch.utils.data.ConcatDataset(datasets)
+        
         print(f"Megadepth metadata loading finished. Total samples: {len(data)}")
         print(f"Dataset type: {type(data)}")
         print(f"Number of individual datasets: {len(data.datasets)}")
         
-        # Print sample information from the first few items
-        print("Sample data examples:")
-        for i in range(min(3, len(data))):  # Print first 3 samples or fewer if dataset is smaller
-            sample = data[i]
-            print(f"Sample {i}:")
-            for key, value in sample.items():
-                if isinstance(value, torch.Tensor):
-                    print(f"  {key}: Tensor shape {value.shape}, dtype {value.dtype}")
-                elif isinstance(value, np.ndarray):
-                    print(f"  {key}: Array shape {value.shape}, dtype {value.dtype}")
-                elif isinstance(value, (list, tuple)):
-                    print(f"  {key}: {type(value)} of length {len(value)}")
-                else:
-                    print(f"  {key}: {type(value)}")
+        # Add dataset integrity verification
+        print("Verifying dataset integrity...")
+        success_count = 0
+        error_count = 0
+        
+        # Sample a few items to verify integrity
+        sample_indices = np.random.choice(len(data), min(5, len(data)), replace=False)
+        for i in sample_indices:
+            try:
+                # Just try to access the item to verify paths
+                _ = data[i]
+                success_count += 1
+            except Exception as e:
+                print(f"Error accessing item {i}: {e}")
+                error_count += 1
+        
+        print(f"Dataset verification complete. Successes: {success_count}, Errors: {error_count}")
+        
+        # Create data loader
         self.data_loader = DataLoader(
             data, 
             batch_size=int(self.batch_size * 0.6 if model_name=='xfeat_default' else self.batch_size),
