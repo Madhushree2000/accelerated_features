@@ -92,7 +92,7 @@ class MegaDepthDataset(Dataset):
         """
         for (start_id, end_id), root_dir in self.root_dirs.items():
             if start_id <= self.scene_id <= end_id:
-                print(f"scene {self.scene_id} belongs to {(start_id, end_id)} in path {root_dir}")
+                # print(f"scene {self.scene_id} belongs to {(start_id, end_id)} in path {root_dir}")
                 return root_dir
         # Default to the first root directory if no match is found
         return list(self.root_dirs.values())[0]
