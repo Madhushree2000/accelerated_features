@@ -208,7 +208,7 @@ class Trainer():
             MegaDepthDataset(root_dirs=self.root_dirs, npz_path=path) 
             for path in tqdm.tqdm(npz_paths, desc=f"[MegaDepth] Loading metadata")
         ])
-
+        print(f"Megadepth metadata loading finished")
         self.data_loader = DataLoader(
             data, 
             batch_size=int(self.batch_size * 0.6 if model_name=='xfeat_default' else self.batch_size),
