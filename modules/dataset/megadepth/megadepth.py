@@ -53,7 +53,7 @@ class MegaDepthDataset(Dataset):
         super().__init__()
         self.root_dirs = root_dirs
         self.mode = mode
-        self.scene_id = int(osp.basename(npz_path).split('.')[0])
+        self.scene_id = int(osp.basename(npz_path).split('.')[0])//10
         self.load_depth = load_depth
         
         # Determine the correct root directory for this scene
