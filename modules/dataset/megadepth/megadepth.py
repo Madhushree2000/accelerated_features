@@ -93,9 +93,10 @@ class MegaDepthDataset(Dataset):
         """
         scene_id = self.scene_id
         
+        
         # First, check if the scene directory exists directly in any root
         scene_dir = f"{scene_id}".zfill(4)
-        print(f"scene: {scene_dir}")
+        print(f"scene: {scene_id}")
         for _, root_dir in self.root_dirs.items():
             potential_path = osp.join(root_dir, scene_dir)
             if osp.exists(potential_path):
