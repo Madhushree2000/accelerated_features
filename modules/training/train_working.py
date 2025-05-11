@@ -37,19 +37,15 @@ def parse_arguments():
                         help='If set, perform a dry run training with a mini-batch for sanity check.')
     parser.add_argument('--save_ckpt_every', type=int, default=500,
                         help='Save checkpoints every N steps. Default is 500.')
-    # Add arguments for resuming training
-    parser.add_argument('--resume_from_checkpoint', type=str, default=None,
-                        help='Path to the checkpoint to resume training from.')
-    parser.add_argument('--start_step', type=int, default=0,
-                        help='Step to start training from when resuming. Default is 0.')
+    # No longer needed as datasets are now mapped based on scene IDs
+    # parser.add_argument('--path_switch_every', type=int, default=5_000,
+    #                     help='Switch between MegaDepth paths every N steps. Default is 5000.')
     parser.add_argument('--wandb_project', type=str, default='xfeat-training',
                         help='Weights & Biases project name. Default is "xfeat-training".')
     parser.add_argument('--wandb_entity', type=str, default=None,
                         help='Weights & Biases entity (username or team name). Default is None (uses default entity).')
     parser.add_argument('--wandb_run_name', type=str, default=None,
                         help='Weights & Biases run name. Default is None (auto-generated name).')
-    parser.add_argument('--wandb_run_id', type=str, default=None,
-                        help='Weights & Biases run ID to resume. Default is None (creates new run).')
     parser.add_argument('--skip_wandb', action='store_true',
                         help='If set, skip using Weights & Biases for logging.')
 
@@ -93,21 +89,10 @@ class Trainer():
                        batch_size = 10, n_steps = 160_000, lr= 3e-4, gamma_steplr=0.5, 
                        training_res = (800, 608), device_num="0", dry_run = False,
                        save_ckpt_every = 500, use_wandb = True, wandb_project = 'xfeat-training',
-                       wandb_entity = None, wandb_run_name = None, wandb_run_id = None,
-                       resume_from_checkpoint = None, start_step = 0):
+                       wandb_entity = None, wandb_run_name = None):
 
         self.dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net = XFeatModel().to(self.dev)
-        
-        # Track the starting step for resuming training
-        self.start_step = start_step
-        
-        # Load checkpoint if resuming training
-        if resume_from_checkpoint is not None:
-            print(f"Loading checkpoint from {resume_from_checkpoint}")
-            checkpoint = torch.load(resume_from_checkpoint, map_location=self.dev)
-            self.net.load_state_dict(checkpoint)
-            print(f"Successfully loaded checkpoint. Resuming from step {start_step}")
         
         # Setup Weights & Biases
         self.use_wandb = use_wandb
@@ -121,20 +106,13 @@ class Trainer():
                 "training_resolution": training_res,
                 "save_checkpoint_every": save_ckpt_every,
                 "megadepth_paths_count": len(megadepth_paths),
-                "device": device_num,
-                "resume_training": resume_from_checkpoint is not None,
-                "start_step": start_step
+                "device": device_num
             }
-            
-            # Resume wandb run if ID is provided, otherwise create new run
-            resume = "must" if wandb_run_id else None
             
             self.run = wandb.init(
                 project=wandb_project,
                 entity=wandb_entity,
                 name=wandb_run_name or f"{model_name}_{time.strftime('%Y_%m_%d-%H_%M_%S')}",
-                id=wandb_run_id,
-                resume=resume,
                 config=wandb_config
             )
             
@@ -145,14 +123,7 @@ class Trainer():
         self.batch_size = batch_size
         self.steps = n_steps
         self.opt = optim.Adam(filter(lambda x: x.requires_grad, self.net.parameters()), lr=lr)
-        
-        # Adjust scheduler for resuming training
-        self.scheduler = torch.optim.lr_scheduler.StepLR(
-            self.opt, 
-            step_size=30_000, 
-            gamma=gamma_steplr,
-            last_epoch=start_step-1 if start_step > 0 else -1  # Tell the scheduler where we are
-        )
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.opt, step_size=30_000, gamma=gamma_steplr)
 
         ##################### Synthetic COCO INIT ##########################
         if model_name in ('xfeat_default', 'xfeat_synthetic'):
@@ -300,11 +271,8 @@ class Trainer():
         if self.data_iter is not None:
             d = next(self.data_iter)
 
-        # Starting from the specified step if resuming
-        total_steps = self.start_step + self.steps
-        
-        with tqdm.tqdm(total=self.steps, initial=self.start_step) as pbar:
-            for i in range(self.start_step, total_steps):
+        with tqdm.tqdm(total=self.steps) as pbar:
+            for i in range(self.steps):
                 if not self.dry_run:
                     if self.data_iter is not None:
                         try:
@@ -466,7 +434,7 @@ class Trainer():
                     wandb.log(wandb_log, step=i)
 
         # Save final model checkpoint
-        self.save_checkpoint(total_steps)
+        self.save_checkpoint(self.steps)
         
         # Close wandb run
         if self.use_wandb:
@@ -504,10 +472,7 @@ if __name__ == '__main__':
         use_wandb=not args.skip_wandb,
         wandb_project=args.wandb_project,
         wandb_entity=args.wandb_entity,
-        wandb_run_name=args.wandb_run_name,
-        wandb_run_id=args.wandb_run_id,
-        resume_from_checkpoint=args.resume_from_checkpoint,
-        start_step=args.start_step
+        wandb_run_name=args.wandb_run_name
     )
 
     # The most fun part
