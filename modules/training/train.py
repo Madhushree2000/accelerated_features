@@ -146,6 +146,10 @@ class Trainer():
         self.steps = n_steps
         self.opt = optim.Adam(filter(lambda x: x.requires_grad, self.net.parameters()), lr=lr)
         
+        # Set initial_lr in optimizer param groups (needed for resuming)
+        for param_group in self.opt.param_groups:
+            param_group['initial_lr'] = lr
+        
         # Adjust scheduler for resuming training
         self.scheduler = torch.optim.lr_scheduler.StepLR(
             self.opt, 
