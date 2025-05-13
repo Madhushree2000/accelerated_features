@@ -16,7 +16,7 @@ from pathlib import Path
 
 # Import the necessary modules from your code
 from modules.xfeat import XFeat
-from eval import MegaDepth1500, compute_pose_error, compute_maa, tensor2bgr, run_pose_benchmark
+from eval.megadepth1500 import MegaDepth1500, compute_pose_error, compute_maa, tensor2bgr, run_pose_benchmark
 
 
 def parse_args():
