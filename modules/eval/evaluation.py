@@ -16,7 +16,7 @@ from pathlib import Path
 
 # Import the necessary modules from your code
 from modules.xfeat import XFeat
-from modules.eval.megadepth1500 import MegaDepth1500, compute_pose_error, compute_maa, tensor2bgr, run_pose_benchmark
+from paste import MegaDepth1500, compute_pose_error, compute_maa, tensor2bgr, run_pose_benchmark
 
 
 def parse_args():
@@ -110,8 +110,8 @@ def main():
     args = parse_args()
     
     # Ensure checkpoint directory exists
-    checkpoint_dir = Path(args.checkpoint_dir)
-    if not checkpoint_dir.exists():
+    checkpoint_dir = args.checkpoint_dir
+    if not os.path.exists(checkpoint_dir):
         raise FileNotFoundError(f"Checkpoint directory not found: {checkpoint_dir}")
     
     # Load dataset
@@ -138,7 +138,7 @@ def main():
     
     # Process each checkpoint
     for checkpoint_file in checkpoint_files:
-        checkpoint_path = checkpoint_dir / checkpoint_file
+        checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
         step = extract_step_from_filename(checkpoint_file)
         
         # Initialize XFeat model
@@ -151,11 +151,25 @@ def main():
             matcher_fn = xfeat.match_xfeat
             model_type = "XFeat"
         
-        # Load checkpoint
+                    # Load checkpoint
         try:
             print(f"Loading checkpoint: {checkpoint_path}")
-            # Adjust this according to how your model loads checkpoints
-            xfeat.load_state_dict(torch.load(checkpoint_path))
+            
+            # Load the checkpoint
+            checkpoint = torch.load(checkpoint_path)
+            
+            # Fix the state dict keys (remove 'net.' prefix from expected keys)
+            fixed_state_dict = {}
+            for k, v in checkpoint.items():
+                # The saved checkpoints don't have 'net.' prefix but the model expects it
+                if not k.startswith('net.'):
+                    fixed_state_dict[f'net.{k}'] = v
+                else:
+                    fixed_state_dict[k] = v
+            
+            # Load the fixed state dict
+            xfeat.load_state_dict(fixed_state_dict, strict=False)
+            print("Checkpoint loaded successfully with key remapping")
             
             # Run validation
             metrics = run_validation_for_checkpoint(
@@ -180,15 +194,30 @@ def main():
             print(f"Error processing checkpoint {checkpoint_file}: {e}")
     
     # Save results to JSON
-    output_path = Path(args.output_file)
-    with open(output_path, 'w') as f:
-        json.dump({
-            "ransac_threshold": args.ransac_thr,
-            "model_type": model_type,
-            "results": results
-        }, f, indent=2)
-    
-    print(f"Results saved to {output_path}")
+    output_path = args.output_file
+    try:
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        
+        with open(output_path, 'w') as f:
+            json.dump({
+                "ransac_threshold": args.ransac_thr,
+                "model_type": model_type,
+                "results": results
+            }, f, indent=2)
+        
+        print(f"Results saved to {output_path}")
+    except Exception as e:
+        print(f"Error saving results: {e}")
+        # Try to save to the current directory as a fallback
+        fallback_path = os.path.basename(output_path)
+        with open(fallback_path, 'w') as f:
+            json.dump({
+                "ransac_threshold": args.ransac_thr,
+                "model_type": model_type,
+                "results": results
+            }, f, indent=2)
+        print(f"Results saved to fallback location: {fallback_path}")
     
     # Display best checkpoint
     if results:
