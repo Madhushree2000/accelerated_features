@@ -1,6 +1,6 @@
 """
-Checkpoint validation script for XFeat model.
-This script loads and evaluates all XFeat checkpoints in a specified directory.
+Checkpoint evaluation and visualization script for XFeat model.
+This script loads and evaluates XFeat checkpoints and generates plots of performance metrics.
 """
 
 import os
@@ -13,14 +13,15 @@ from collections import defaultdict
 import tqdm
 import json
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 # Import the necessary modules from your code
 from modules.xfeat import XFeat
-from modules.eval.megadepth1500 import MegaDepth1500, compute_pose_error, compute_maa, tensor2bgr, run_pose_benchmark
+from modules.eval.megadepth1500 import MegaDepth1500, compute_pose_error, tensor2bgr
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Validate XFeat model checkpoints")
+    parser = argparse.ArgumentParser(description="Validate and visualize XFeat model checkpoints")
     parser.add_argument('--dataset-dir', type=str, required=True,
                         help="Path to MegaDepth dataset root")
     parser.add_argument('--checkpoint-dir', type=str, default='weights/checkpoints',
@@ -33,6 +34,8 @@ def parse_args():
                         help="Top-K keypoints to use for XFeat* (default: 10000)")
     parser.add_argument('--output-file', type=str, default='validation_results.json',
                         help="JSON file to save validation results")
+    parser.add_argument('--plots-dir', type=str, default='plots',
+                        help="Directory to save visualization plots")
     return parser.parse_args()
 
 
@@ -106,6 +109,91 @@ def compute_auc(errors, thresholds=[5, 10, 20]):
     return auc_metrics
 
 
+def plot_metrics(results, output_dir):
+    """Generate plots for AUC and mAcc metrics across checkpoints."""
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Extract steps and organize metrics
+    steps = sorted(int(step) for step in results.keys())
+    metrics_data = {
+        'auc@5': [],
+        'auc@10': [],
+        'auc@20': [],
+        'mAcc@5': [],
+        'mAcc@10': [],
+        'mAcc@20': []
+    }
+    
+    for step in steps:
+        step_metrics = results[str(step)]["metrics"]
+        for metric in metrics_data.keys():
+            metrics_data[metric].append(step_metrics[metric])
+    
+    # Create AUC plot
+    plt.figure(figsize=(10, 6))
+    plt.title('AUC Metrics Across Training Steps')
+    plt.plot(steps, metrics_data['auc@5'], 'b-', label='AUC@5')
+    plt.plot(steps, metrics_data['auc@10'], 'g-', label='AUC@10')
+    plt.plot(steps, metrics_data['auc@20'], 'r-', label='AUC@20')
+    plt.xlabel('Training Step')
+    plt.ylabel('AUC (%)')
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'auc_metrics.png'), dpi=300)
+    plt.close()
+    
+    # Create mAcc plot
+    plt.figure(figsize=(10, 6))
+    plt.title('mAcc Metrics Across Training Steps')
+    plt.plot(steps, metrics_data['mAcc@5'], 'b-', label='mAcc@5')
+    plt.plot(steps, metrics_data['mAcc@10'], 'g-', label='mAcc@10')
+    plt.plot(steps, metrics_data['mAcc@20'], 'r-', label='mAcc@20')
+    plt.xlabel('Training Step')
+    plt.ylabel('Accuracy (%)')
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'macc_metrics.png'), dpi=300)
+    plt.close()
+    
+    # Create combined plot with all metrics
+    plt.figure(figsize=(12, 8))
+    plt.title('All Metrics Across Training Steps')
+    
+    # Plot AUC metrics with solid lines
+    plt.plot(steps, metrics_data['auc@5'], 'b-', label='AUC@5')
+    plt.plot(steps, metrics_data['auc@10'], 'g-', label='AUC@10')
+    plt.plot(steps, metrics_data['auc@20'], 'r-', label='AUC@20')
+    
+    # Plot mAcc metrics with dashed lines
+    plt.plot(steps, metrics_data['mAcc@5'], 'b--', label='mAcc@5')
+    plt.plot(steps, metrics_data['mAcc@10'], 'g--', label='mAcc@10')
+    plt.plot(steps, metrics_data['mAcc@20'], 'r--', label='mAcc@20')
+    
+    plt.xlabel('Training Step')
+    plt.ylabel('Metric Value (%)')
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'all_metrics.png'), dpi=300)
+    plt.close()
+    
+    print(f"Plots saved to directory: {output_dir}")
+
+
+def load_results_if_exists(output_file):
+    """Load existing results from JSON file if it exists."""
+    if os.path.exists(output_file):
+        try:
+            with open(output_file, 'r') as f:
+                data = json.load(f)
+                return data.get("results", {})
+        except Exception as e:
+            print(f"Error loading existing results: {e}")
+    return {}
+
+
 def main():
     args = parse_args()
     
@@ -121,6 +209,9 @@ def main():
     )
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
     
+    # Check if results already exist
+    existing_results = load_results_if_exists(args.output_file)
+    
     # Find all checkpoint files
     checkpoint_files = sorted(
         [f for f in os.listdir(checkpoint_dir) if f.endswith('.pth')],
@@ -133,13 +224,18 @@ def main():
     
     print(f"Found {len(checkpoint_files)} checkpoint files")
     
-    # Initialize results dictionary
-    results = {}
+    # Initialize results dictionary with existing results
+    results = existing_results
     
-    # Process each checkpoint
+    # Process each checkpoint that hasn't been processed yet
     for checkpoint_file in checkpoint_files:
         checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
         step = extract_step_from_filename(checkpoint_file)
+        
+        # Skip if this checkpoint has already been processed
+        if str(step) in results:
+            print(f"Skipping already processed checkpoint: {checkpoint_file}")
+            continue
         
         # Initialize XFeat model
         if args.use_star:
@@ -151,7 +247,7 @@ def main():
             matcher_fn = xfeat.match_xfeat
             model_type = "XFeat"
         
-                    # Load checkpoint
+        # Load checkpoint
         try:
             print(f"Loading checkpoint: {checkpoint_path}")
             
@@ -190,10 +286,18 @@ def main():
                 print(f"{metric_name}: {metric_value:.2f}")
             print()
             
+            # Save incremental results to avoid losing progress
+            with open(args.output_file, 'w') as f:
+                json.dump({
+                    "ransac_threshold": args.ransac_thr,
+                    "model_type": model_type,
+                    "results": results
+                }, f, indent=2)
+            
         except Exception as e:
             print(f"Error processing checkpoint {checkpoint_file}: {e}")
     
-    # Save results to JSON
+    # Save final results to JSON
     output_path = args.output_file
     try:
         # Ensure the directory exists
@@ -218,6 +322,9 @@ def main():
                 "results": results
             }, f, indent=2)
         print(f"Results saved to fallback location: {fallback_path}")
+    
+    # Generate plots
+    plot_metrics(results, args.plots_dir)
     
     # Display best checkpoint
     if results:
