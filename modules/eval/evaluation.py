@@ -9,7 +9,6 @@ import argparse
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
-from collections import defaultdict
 import tqdm
 import json
 from pathlib import Path
@@ -53,19 +52,23 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     
     pairs = []
     for d in tqdm.tqdm(loader):
-        src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
+        try:
+            src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
 
-        # Delete images to avoid OOM
-        del d['image0']
-        del d['image1']
+            # Delete images to avoid OOM
+            del d['image0']
+            del d['image1']
 
-        # Rescale keypoints
-        src_pts = src_pts * d['scale0'].numpy()
-        dst_pts = dst_pts * d['scale1'].numpy()
-        
-        d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
-        compute_pose_error(d)
-        pairs.append(d)
+            # Rescale keypoints
+            src_pts = src_pts * d['scale0'].numpy()
+            dst_pts = dst_pts * d['scale1'].numpy()
+            
+            d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
+            compute_pose_error(d)
+            pairs.append(d)
+        except Exception as e:
+            print(f"Error processing image pair: {e}")
+            continue
     
     # Compute metrics
     print(f"Computing metrics for checkpoint: {checkpoint_path}")
@@ -115,6 +118,10 @@ def plot_metrics(results, output_dir):
     
     # Extract steps and organize metrics
     steps = sorted(int(step) for step in results.keys())
+    if not steps:
+        print("No valid results to plot")
+        return
+        
     metrics_data = {
         'auc@5': [],
         'auc@10': [],
@@ -184,7 +191,7 @@ def plot_metrics(results, output_dir):
 
 def load_results_if_exists(output_file):
     """Load existing results from JSON file if it exists."""
-    if os.path.exists(output_file):
+    if os.path.exists(output_file) and os.path.isfile(output_file):
         try:
             with open(output_file, 'r') as f:
                 data = json.load(f)
@@ -202,15 +209,28 @@ def main():
     if not os.path.exists(checkpoint_dir):
         raise FileNotFoundError(f"Checkpoint directory not found: {checkpoint_dir}")
     
+    # Ensure output file is a file, not a directory
+    output_path = args.output_file
+    if os.path.exists(output_path) and os.path.isdir(output_path):
+        output_path = os.path.join(output_path, "validation_results.json")
+        print(f"Output path is a directory. Changed to {output_path}")
+    
+    # Create plots directory
+    os.makedirs(args.plots_dir, exist_ok=True)
+    
     # Load dataset
-    dataset = MegaDepth1500(
-        json_file='./assets/megadepth_1500.json',
-        root_dir=f"{args.dataset_dir}/megadepth_test_1500"
-    )
-    loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    try:
+        dataset = MegaDepth1500(
+            json_file='./assets/megadepth_1500.json',
+            root_dir=f"{args.dataset_dir}/megadepth_test_1500"
+        )
+        loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        return
     
     # Check if results already exist
-    existing_results = load_results_if_exists(args.output_file)
+    existing_results = load_results_if_exists(output_path)
     
     # Find all checkpoint files
     checkpoint_files = sorted(
@@ -251,8 +271,8 @@ def main():
         try:
             print(f"Loading checkpoint: {checkpoint_path}")
             
-            # Load the checkpoint
-            checkpoint = torch.load(checkpoint_path)
+            # Load the checkpoint with CPU map_location to avoid CUDA errors
+            checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
             
             # Fix the state dict keys (remove 'net.' prefix from expected keys)
             fixed_state_dict = {}
@@ -287,18 +307,20 @@ def main():
             print()
             
             # Save incremental results to avoid losing progress
-            with open(args.output_file, 'w') as f:
-                json.dump({
-                    "ransac_threshold": args.ransac_thr,
-                    "model_type": model_type,
-                    "results": results
-                }, f, indent=2)
+            try:
+                with open(output_path, 'w') as f:
+                    json.dump({
+                        "ransac_threshold": args.ransac_thr,
+                        "model_type": model_type,
+                        "results": results
+                    }, f, indent=2)
+            except Exception as e:
+                print(f"Warning: Could not save incremental results: {e}")
             
         except Exception as e:
             print(f"Error processing checkpoint {checkpoint_file}: {e}")
     
     # Save final results to JSON
-    output_path = args.output_file
     try:
         # Ensure the directory exists
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
@@ -314,20 +336,23 @@ def main():
     except Exception as e:
         print(f"Error saving results: {e}")
         # Try to save to the current directory as a fallback
-        fallback_path = os.path.basename(output_path)
-        with open(fallback_path, 'w') as f:
-            json.dump({
-                "ransac_threshold": args.ransac_thr,
-                "model_type": model_type,
-                "results": results
-            }, f, indent=2)
-        print(f"Results saved to fallback location: {fallback_path}")
+        fallback_path = "validation_results.json"
+        try:
+            with open(fallback_path, 'w') as f:
+                json.dump({
+                    "ransac_threshold": args.ransac_thr,
+                    "model_type": model_type,
+                    "results": results
+                }, f, indent=2)
+            print(f"Results saved to fallback location: {fallback_path}")
+        except Exception as e2:
+            print(f"Error saving to fallback location: {e2}")
     
-    # Generate plots
-    plot_metrics(results, args.plots_dir)
-    
-    # Display best checkpoint
+    # Generate plots if we have results
     if results:
+        plot_metrics(results, args.plots_dir)
+        
+        # Display best checkpoint
         best_step = max(results.keys(), key=lambda s: results[s]["metrics"]["auc@10"])
         best_checkpoint = results[best_step]
         print("\nBest checkpoint:")
@@ -336,6 +361,8 @@ def main():
         print("Metrics:")
         for metric_name, metric_value in best_checkpoint["metrics"].items():
             print(f"{metric_name}: {metric_value:.2f}")
+    else:
+        print("No results to plot.")
 
 
 if __name__ == "__main__":
