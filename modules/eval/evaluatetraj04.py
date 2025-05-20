@@ -1,6 +1,7 @@
 """
-Checkpoint evaluation and visualization script for XFeat model with custom dataset.
-This script loads and evaluates XFeat checkpoints and generates plots of performance metrics.
+Checkpoint evaluation and visualization script for XFeat model with Custom Dataset.
+This script loads and evaluates XFeat checkpoints and generates plots of performance metrics
+using the custom dataset with 36 folders of 12 images each.
 """
 
 import os
@@ -14,16 +15,20 @@ import json
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-# Import the custom dataset and metrics
-from modules.eval.batcheddatasettraj_04 import BatchedDataset, compute_pose_error, tensor2bgr
+# Import the necessary modules from your code
+from modules.xfeat import XFeat
+
+# Import the CustomDataset from our adapted code - make sure this path is correct
+# You can either merge this file with the previous one or import it properly
+from custom_dataset_pose_benchmark import CustomDataset, compute_pose_error, tensor2bgr
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Validate and visualize XFeat model checkpoints with custom dataset")
     parser.add_argument('--dataset-dir', type=str, required=True,
-                        help="Path to custom dataset root")
-    parser.add_argument('--json-file', type=str, required=True, 
-                        help="Path to JSON file with dataset information")
+                        help="Path to dataset root containing the 36 folders")
+    parser.add_argument('--json-file', type=str, required=True,
+                        help="Path to JSON file with camera calibration and pose information")
     parser.add_argument('--checkpoint-dir', type=str, default='weights/checkpoints',
                         help="Directory containing model checkpoints")
     parser.add_argument('--ransac-thr', type=float, default=2.5,
@@ -36,10 +41,8 @@ def parse_args():
                         help="JSON file to save validation results")
     parser.add_argument('--plots-dir', type=str, default='plots',
                         help="Directory to save visualization plots")
-    parser.add_argument('--batch-size', type=int, default=1,
-                        help="Batch size for evaluation (default: 1)")
-    parser.add_argument('--num-workers', type=int, default=0,
-                        help="Number of workers for data loading (default: 0)")
+    parser.add_argument('--num-workers', type=int, default=4,
+                        help="Number of worker processes for data loading")
     return parser.parse_args()
 
 
@@ -56,8 +59,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     print(f"Validating checkpoint: {checkpoint_path}")
     
     pairs = []
-    error_count = 0
-    success_count = 0
+    failed_count = 0
     
     for d in tqdm.tqdm(loader):
         try:
@@ -71,20 +73,21 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             src_pts = src_pts * d['scale0'].numpy()
             dst_pts = dst_pts * d['scale1'].numpy()
             
+            # Skip if too few matches
+            if len(src_pts) < 8:
+                print(f"Warning: Not enough matches ({len(src_pts)}), skipping pair")
+                failed_count += 1
+                continue
+                
             d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
             compute_pose_error(d)
             pairs.append(d)
-            success_count += 1
         except Exception as e:
             print(f"Error processing image pair: {e}")
-            error_count += 1
+            failed_count += 1
             continue
     
-    print(f"Successfully processed {success_count} pairs. Failed on {error_count} pairs.")
-    
-    if not pairs:
-        print("No valid pairs were processed. Cannot calculate metrics.")
-        return {}
+    print(f"Successfully processed {len(pairs)} pairs, failed on {failed_count} pairs")
     
     # Compute metrics
     print(f"Computing metrics for checkpoint: {checkpoint_path}")
@@ -106,14 +109,36 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
         acc = (errors <= t).sum() / len(errors)
         acc_metrics[f'mAcc@{t}'] = float(acc * 100)
     
+    # Add per-scene metrics
+    scene_metrics = {}
+    if len(pairs) > 0 and 'scene_id' in pairs[0]:
+        scenes = {}
+        for p in pairs:
+            scene_id = p['scene_id']
+            if scene_id not in scenes:
+                scenes[scene_id] = []
+            scenes[scene_id].append(max(p['t_err'], p['R_err']))
+        
+        for scene, scene_errors in scenes.items():
+            scene_errors = np.array(scene_errors)
+            scene_metrics[f'scene_{scene}'] = {
+                'count': len(scene_errors),
+                'mAcc@5': float((scene_errors <= 5).sum() / len(scene_errors) * 100),
+                'mAcc@10': float((scene_errors <= 10).sum() / len(scene_errors) * 100), 
+                'mAcc@20': float((scene_errors <= 20).sum() / len(scene_errors) * 100)
+            }
+    
     # Combine metrics
-    metrics = {**auc_metrics, **acc_metrics}
+    metrics = {**auc_metrics, **acc_metrics, 'scene_metrics': scene_metrics}
     
     return metrics
 
 
 def compute_auc(errors, thresholds=[5, 10, 20]):
     """Compute AUC metrics for given errors and thresholds."""
+    if len(errors) == 0:
+        return {f'auc@{thr}': 0.0 for thr in thresholds}
+        
     errors = [0] + sorted(list(errors))
     recall = list(np.linspace(0, 1, len(errors)))
 
@@ -153,7 +178,7 @@ def plot_metrics(results, output_dir):
             if metric in step_metrics:
                 metrics_data[metric].append(step_metrics[metric])
             else:
-                metrics_data[metric].append(0.0)  # Default value if metric is missing
+                metrics_data[metric].append(0)  # Default if metric is missing
     
     # Create AUC plot
     plt.figure(figsize=(10, 6))
@@ -205,6 +230,38 @@ def plot_metrics(results, output_dir):
     plt.savefig(os.path.join(output_dir, 'all_metrics.png'), dpi=300)
     plt.close()
     
+    # Create per-scene performance plot for last checkpoint (if available)
+    latest_result = results[str(steps[-1])]
+    if 'scene_metrics' in latest_result['metrics']:
+        scene_metrics = latest_result['metrics']['scene_metrics']
+        scene_ids = sorted(scene_metrics.keys())
+        
+        if scene_ids:
+            # Extract mAcc@10 for each scene
+            scene_accs = [scene_metrics[scene]['mAcc@10'] for scene in scene_ids]
+            scene_counts = [scene_metrics[scene]['count'] for scene in scene_ids]
+            
+            # Generate scene labels with count
+            scene_labels = [f"{scene.replace('scene_', '')} ({count})" for scene, count in zip(scene_ids, scene_counts)]
+            
+            # Sort by accuracy
+            sorted_indices = np.argsort(scene_accs)
+            sorted_accs = [scene_accs[i] for i in sorted_indices]
+            sorted_labels = [scene_labels[i] for i in sorted_indices]
+            
+            # Plot the per-scene performance
+            plt.figure(figsize=(14, 8))
+            plt.title(f'Per-Scene Performance (mAcc@10) - Checkpoint {steps[-1]}')
+            plt.barh(sorted_labels, sorted_accs)
+            plt.axvline(x=np.mean(scene_accs), color='r', linestyle='--', label=f'Average: {np.mean(scene_accs):.1f}%')
+            plt.xlabel('mAcc@10 (%)')
+            plt.ylabel('Scene ID (count)')
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, 'scene_performance.png'), dpi=300)
+            plt.close()
+    
     print(f"Plots saved to directory: {output_dir}")
 
 
@@ -220,8 +277,46 @@ def load_results_if_exists(output_file):
     return {}
 
 
+def validate_json_structure(json_file):
+    """
+    Validates that the JSON file has the expected structure compatible with the dataset.
+    """
+    try:
+        with open(json_file, 'r') as f:
+            data = json.load(f)
+        
+        if len(data) == 0:
+            print("Warning: JSON file contains no entries")
+            return False
+            
+        required_keys = ['pair_names', 'size0_hw', 'size1_hw', 'K0', 'K1', 'T_0to1', 'scene_id']
+        sample = data[0]
+        
+        for key in required_keys:
+            if key not in sample:
+                print(f"Error: Required key '{key}' missing from JSON data")
+                return False
+                
+        # Check pair_names structure
+        if not (isinstance(sample['pair_names'], list) and len(sample['pair_names']) == 2):
+            print("Error: 'pair_names' should be a list with 2 elements")
+            return False
+            
+        print(f"JSON validation successful: {len(data)} entries found")
+        return True
+        
+    except Exception as e:
+        print(f"Error validating JSON file: {e}")
+        return False
+
+
 def main():
     args = parse_args()
+    
+    # Validate JSON file
+    if not validate_json_structure(args.json_file):
+        print("JSON validation failed. Please check your JSON file format.")
+        return
     
     # Ensure checkpoint directory exists
     checkpoint_dir = args.checkpoint_dir
@@ -239,17 +334,17 @@ def main():
     
     # Load dataset
     try:
-        dataset = BatchedDataset(
+        dataset = CustomDataset(
             json_file=args.json_file,
             root_dir=args.dataset_dir
         )
         loader = DataLoader(
             dataset, 
-            batch_size=args.batch_size, 
+            batch_size=1, 
             shuffle=False,
             num_workers=args.num_workers
         )
-        print(f"Dataset loaded successfully with {len(dataset)} image pairs")
+        print(f"Dataset loaded with {len(dataset)} image pairs")
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
@@ -283,20 +378,14 @@ def main():
             continue
         
         # Initialize XFeat model
-        try:
-            from modules.xfeat import XFeat
-            if args.use_star:
-                xfeat = XFeat(top_k=args.top_k)
-                matcher_fn = xfeat.match_xfeat_star
-                model_type = "XFeat*"
-            else:
-                xfeat = XFeat()
-                matcher_fn = xfeat.match_xfeat
-                model_type = "XFeat"
-        except Exception as e:
-            print(f"Error importing XFeat module: {e}")
-            print("Make sure the correct modules are in the Python path")
-            return
+        if args.use_star:
+            xfeat = XFeat(top_k=args.top_k)
+            matcher_fn = xfeat.match_xfeat_star
+            model_type = "XFeat*"
+        else:
+            xfeat = XFeat()
+            matcher_fn = xfeat.match_xfeat
+            model_type = "XFeat"
         
         # Load checkpoint
         try:
@@ -305,28 +394,24 @@ def main():
             # Load the checkpoint with CPU map_location to avoid CUDA errors
             checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
             
-            # Fix the state dict keys if needed
+            # Fix the state dict keys (remove 'net.' prefix from expected keys)
             fixed_state_dict = {}
             for k, v in checkpoint.items():
-                # The saved checkpoints might not have 'net.' prefix but the model expects it
+                # The saved checkpoints don't have 'net.' prefix but the model expects it
                 if not k.startswith('net.'):
                     fixed_state_dict[f'net.{k}'] = v
                 else:
                     fixed_state_dict[k] = v
             
-            # Load the fixed state dict with strict=False to allow partial loading
+            # Load the fixed state dict
             xfeat.load_state_dict(fixed_state_dict, strict=False)
-            print("Checkpoint loaded successfully")
+            print("Checkpoint loaded successfully with key remapping")
             
             # Run validation
             metrics = run_validation_for_checkpoint(
                 checkpoint_path, matcher_fn, loader, args.ransac_thr
             )
             
-            if not metrics:
-                print(f"No valid metrics computed for checkpoint {checkpoint_file}. Skipping.")
-                continue
-                
             # Store results
             results[str(step)] = {
                 "file": checkpoint_file,
@@ -338,7 +423,8 @@ def main():
             # Print current results
             print(f"\nResults for {checkpoint_file} (Step {step}):")
             for metric_name, metric_value in metrics.items():
-                print(f"{metric_name}: {metric_value:.2f}")
+                if metric_name != 'scene_metrics':  # Skip detailed scene metrics in summary output
+                    print(f"{metric_name}: {metric_value:.2f}")
             print()
             
             # Save incremental results to avoid losing progress
@@ -363,7 +449,7 @@ def main():
         with open(output_path, 'w') as f:
             json.dump({
                 "ransac_threshold": args.ransac_thr,
-                "model_type": model_type if 'model_type' in locals() else "unknown",
+                "model_type": model_type,
                 "results": results
             }, f, indent=2)
         
@@ -376,7 +462,7 @@ def main():
             with open(fallback_path, 'w') as f:
                 json.dump({
                     "ransac_threshold": args.ransac_thr,
-                    "model_type": model_type if 'model_type' in locals() else "unknown",
+                    "model_type": model_type,
                     "results": results
                 }, f, indent=2)
             print(f"Results saved to fallback location: {fallback_path}")
@@ -387,18 +473,19 @@ def main():
     if results:
         plot_metrics(results, args.plots_dir)
         
-        # Display best checkpoint by AUC@10 if available
-        if any(("metrics" in v and "auc@10" in v["metrics"]) for v in results.values()):
-            best_step = max(results.keys(), key=lambda s: results[s]["metrics"].get("auc@10", 0))
+        # Display best checkpoint based on auc@10
+        try:
+            best_step = max(results.keys(), key=lambda s: results[s]["metrics"]["auc@10"])
             best_checkpoint = results[best_step]
             print("\nBest checkpoint:")
             print(f"Step: {best_step}")
             print(f"File: {best_checkpoint['file']}")
             print("Metrics:")
             for metric_name, metric_value in best_checkpoint["metrics"].items():
-                print(f"{metric_name}: {metric_value:.2f}")
-        else:
-            print("\nCould not determine best checkpoint due to missing metrics.")
+                if metric_name != 'scene_metrics':  # Skip detailed scene metrics in summary output
+                    print(f"{metric_name}: {metric_value:.2f}")
+        except Exception as e:
+            print(f"Could not determine best checkpoint: {e}")
     else:
         print("No results to plot.")
 

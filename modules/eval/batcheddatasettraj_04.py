@@ -1,9 +1,10 @@
 """
-	"XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
+	Adapted from "XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
 	https://www.verlab.dcc.ufmg.br/descriptors/xfeat_cvpr24/
 
     Camera pose metrics adapted from LoFTR https://github.com/zju3dv/LoFTR/blob/master/src/utils/metrics.py
-    Modified to work with custom batched image dataset.
+    
+    Modified to work with a custom dataset structure of 36 folders with 12 images each.
 """
 
 import argparse, glob, sys, os, time
@@ -20,58 +21,48 @@ import tqdm
 # Disable scientific notation
 np.set_printoptions(suppress=True)
 
-class BatchedDataset(Dataset):
+class CustomDataset(Dataset):
     """
-    Custom dataset for batched images with global relative pose information.
-    Each batch contains 12 images, and relative poses are provided in a global JSON file.
+    Custom dataset loader for a dataset with 36 folders, each containing 12 images.
+    The camera poses & metadata are stored in a formatted json similar to MegaDepth1500.
     """
     def __init__(self, json_file, root_dir):
         # Load the info & calibration from the JSON
         with open(json_file, 'r') as f:
             self.data = json.load(f)
-        
+
         self.root_dir = root_dir
-        
+
         if not os.path.exists(self.root_dir):
             raise RuntimeError(
-            f"Dataset {self.root_dir} does not exist!")
-        
-        # Validate that the dataset structure matches expectations
-        batch_folders = [f for f in os.listdir(self.root_dir) if os.path.isdir(os.path.join(self.root_dir, f))]
-        if not batch_folders:
-            raise RuntimeError(f"No batch folders found in {self.root_dir}")
-            
-        print(f"Found {len(batch_folders)} batch folders")
-        print(f"Dataset contains {len(self.data)} image pairs")
+            f"Dataset {self.root_dir} does not exist! Please check the path provided.")
+
+        # Print dataset statistics
+        num_folders = len(set([item['scene_id'] for item in self.data])) if len(self.data) > 0 else 0
+        print(f"Dataset loaded with {len(self.data)} image pairs across {num_folders} folders")
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         data = copy.deepcopy(self.data[idx])
-        
+
         h1, w1 = data['size0_hw']
         h2, w2 = data['size1_hw']
+
+        # Construct the full path to the images
+        # Assuming the json file has folder/image structure in the pair_names
+        image0_path = os.path.join(self.root_dir, data['pair_names'][0])
+        image1_path = os.path.join(self.root_dir, data['pair_names'][1])
         
-        # Get the full image paths - if the paths in JSON are relative, make them absolute
-        img_path0 = data['pair_names'][0]
-        img_path1 = data['pair_names'][1]
-        
-        # Check if paths are absolute or relative
-        if not os.path.isabs(img_path0):
-            img_path0 = os.path.join(self.root_dir, img_path0)
-        if not os.path.isabs(img_path1):
-            img_path1 = os.path.join(self.root_dir, img_path1)
-            
-        # Load and resize images
-        try:
-            image0 = cv2.resize(cv2.imread(img_path0), (w1, h1))
-            image1 = cv2.resize(cv2.imread(img_path1), (w2, h2))
-        except Exception as e:
-            print(f"Error loading images: {e}")
-            print(f"Attempted paths: {img_path0}, {img_path1}")
-            # Return empty data if image loading fails
-            raise RuntimeError(f"Failed to load images: {e}")
+        if not os.path.exists(image0_path):
+            raise FileNotFoundError(f"Image not found: {image0_path}")
+        if not os.path.exists(image1_path):
+            raise FileNotFoundError(f"Image not found: {image1_path}")
+
+        # Read and resize images
+        image0 = cv2.resize(cv2.imread(image0_path), (w1, h1))
+        image1 = cv2.resize(cv2.imread(image1_path), (w2, h2))
 
         data['image0'] = torch.tensor(image0.astype(np.float32)/255).permute(2,0,1)
         data['image1'] = torch.tensor(image1.astype(np.float32)/255).permute(2,0,1)
@@ -193,6 +184,7 @@ def error_auc(errors, thresholds=[5, 10, 20]):
 
     return {f'auc@{t}': auc for t, auc in zip(thresholds, aucs)}
 
+
 def compute_maa(pairs, thresholds=[5, 10, 20]):
     print("auc / mAcc on %d pairs" % (len(pairs)))
     errors = []
@@ -213,6 +205,21 @@ def compute_maa(pairs, thresholds=[5, 10, 20]):
         acc = (errors <= t).sum() / len(errors)
         print("mAcc@%d: %.1f "%(t, acc*100))
     
+    # Additionally, compute per-folder performance
+    if len(pairs) > 0 and 'scene_id' in pairs[0]:
+        print("\nPer-folder performance:")
+        folders = {}
+        for p in pairs:
+            scene_id = p['scene_id']
+            if scene_id not in folders:
+                folders[scene_id] = []
+            folders[scene_id].append(max(p['t_err'], p['R_err']))
+        
+        for folder, errors in folders.items():
+            errors = np.array(errors)
+            acc_10 = (errors <= 10).sum() / len(errors)
+            print(f"Folder {folder}: mAcc@10: {acc_10*100:.1f}% ({len(errors)} pairs)")
+
 
 @torch.inference_mode()
 def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
@@ -234,61 +241,153 @@ def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
     """
     pairs = []
     cnt = 0
+    failed_pairs = 0
+    
     for d in tqdm.tqdm(loader):
         try:
             src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
-
-            #delete images to avoid OOM, happens in low mem machines
+            
+            # Delete images to avoid OOM
             del d['image0']
             del d['image1']
-
-            #rescale kpts
+            
+            # Rescale keypoints
             src_pts = src_pts * d['scale0'].numpy()
             dst_pts = dst_pts * d['scale1'].numpy()
-            d.update({"pts0":src_pts, "pts1": dst_pts,'ransac_thr': ransac_thr})
+            
+            # Skip if no matches found
+            if len(src_pts) < 8:
+                print(f"Warning: Not enough matches ({len(src_pts)}) for pair {cnt}, skipping...")
+                failed_pairs += 1
+                continue
+                
+            d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
             compute_pose_error(d)
             pairs.append(d)
-            cnt+=1
+            
         except Exception as e:
-            print(f"Error in processing pair {cnt}: {e}")
-            continue
+            print(f"Error processing pair {cnt}: {e}")
+            failed_pairs += 1
+            
+        cnt += 1
 
+    print(f"Processed {cnt} pairs, {failed_pairs} failed")
     compute_maa(pairs)
+    
+    return pairs  # Return pairs for possible further analysis
+
+
+def validate_json_structure(json_file):
+    """
+    Validates that the JSON file has the expected structure compatible with the dataset.
+    """
+    try:
+        with open(json_file, 'r') as f:
+            data = json.load(f)
+        
+        if len(data) == 0:
+            print("Warning: JSON file contains no entries")
+            return False
+            
+        required_keys = ['pair_names', 'size0_hw', 'size1_hw', 'K0', 'K1', 'T_0to1', 'scene_id']
+        sample = data[0]
+        
+        for key in required_keys:
+            if key not in sample:
+                print(f"Error: Required key '{key}' missing from JSON data")
+                return False
+                
+        # Check pair_names structure
+        if not (isinstance(sample['pair_names'], list) and len(sample['pair_names']) == 2):
+            print("Error: 'pair_names' should be a list with 2 elements")
+            return False
+            
+        print(f"JSON validation successful: {len(data)} entries found")
+        return True
+        
+    except Exception as e:
+        print(f"Error validating JSON file: {e}")
+        return False
+
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run pose benchmark with matcher")
+    parser = argparse.ArgumentParser(description="Run pose benchmark with matcher on custom dataset")
     parser.add_argument('--dataset-dir', type=str, required=True,
-                        help="Path to custom dataset root")
+                        help="Path to dataset root containing the 36 folders")
     parser.add_argument('--json-file', type=str, required=True,
-                        help="Path to JSON file with dataset information")
+                        help="Path to JSON file with camera calibration and pose information")
     parser.add_argument('--matcher', type=str, choices=['xfeat', 'xfeat-star', 'alike'], default='xfeat',
                         help="Matcher to use (xfeat, xfeat-star, or alike)")
     parser.add_argument('--ransac-thr', type=float, default=2.5,
                         help="RANSAC threshold value in pixels (default: 2.5)")
+    parser.add_argument('--batch-size', type=int, default=1,
+                        help="Batch size for data loader (default: 1)")
     return parser.parse_args()
 
 
 if __name__ == '__main__':
-
     args = parse_args()
-
-    dataset = BatchedDataset(json_file=args.json_file, root_dir=args.dataset_dir)
-
-    loader = DataLoader(dataset, batch_size=1, shuffle=False)
-
+    
+    # Validate JSON file structure
+    if not validate_json_structure(args.json_file):
+        print("JSON validation failed. Please check the format of your JSON file.")
+        sys.exit(1)
+    
+    # Initialize dataset
+    dataset = CustomDataset(json_file=args.json_file, root_dir=args.dataset_dir)
+    
+    # Create data loader
+    loader = DataLoader(dataset, 
+                        batch_size=args.batch_size, 
+                        shuffle=False,
+                        num_workers=4)
+    
+    # Run benchmark with selected matcher
     if args.matcher == 'xfeat':
         print("Running benchmark for XFeat..")
         from modules.xfeat import XFeat
         xfeat = XFeat()
-        run_pose_benchmark(matcher_fn=xfeat.match_xfeat, loader=loader, ransac_thr=args.ransac_thr)
-
+        results = run_pose_benchmark(matcher_fn=xfeat.match_xfeat, 
+                                     loader=loader, 
+                                     ransac_thr=args.ransac_thr)
+    
     elif args.matcher == 'xfeat-star':
         from modules.xfeat import XFeat
         print("Running benchmark for XFeat*..")
         xfeat = XFeat(top_k=10_000)
-        run_pose_benchmark(matcher_fn=xfeat.match_xfeat_star, loader=loader, ransac_thr=args.ransac_thr)
-
+        results = run_pose_benchmark(matcher_fn=xfeat.match_xfeat_star, 
+                                     loader=loader, 
+                                     ransac_thr=args.ransac_thr)
+    
     elif args.matcher == 'alike':
         from third_party import alike_wrapper as alike
         print("Running benchmark for ALIKE..")
-        run_pose_benchmark(matcher_fn=alike.match_alike, loader=loader, ransac_thr=args.ransac_thr)
+        results = run_pose_benchmark(matcher_fn=alike.match_alike, 
+                                     loader=loader, 
+                                     ransac_thr=args.ransac_thr)
+    
+    # Save results to file
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    result_file = f"results_{args.matcher}_{timestamp}.json"
+    
+    # Convert results to serializable format
+    serializable_results = {}
+    serializable_results['matcher'] = args.matcher
+    serializable_results['ransac_thr'] = args.ransac_thr
+    serializable_results['num_pairs'] = len(results)
+    
+    # Save per-pair error metrics
+    pair_errors = []
+    for p in results:
+        pair_errors.append({
+            'scene_id': p['scene_id'] if 'scene_id' in p else 'unknown',
+            'pair_id': p['pair_id'] if 'pair_id' in p else 'unknown',
+            'R_err': float(p['R_err']),
+            't_err': float(p['t_err'])
+        })
+    serializable_results['pair_errors'] = pair_errors
+    
+    with open(result_file, 'w') as f:
+        json.dump(serializable_results, f, indent=2)
+    
+    print(f"Results saved to {result_file}")

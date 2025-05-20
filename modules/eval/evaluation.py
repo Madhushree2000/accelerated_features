@@ -22,7 +22,7 @@ from modules.eval.megadepth1500 import MegaDepth1500, compute_pose_error, tensor
 def parse_args():
     parser = argparse.ArgumentParser(description="Validate and visualize XFeat model checkpoints")
     parser.add_argument('--dataset-dir', type=str, required=True,
-                        help="Path to MegaDepth dataset root")
+                        help="Path to dataset root")
     parser.add_argument('--checkpoint-dir', type=str, default='weights/checkpoints',
                         help="Directory containing model checkpoints")
     parser.add_argument('--ransac-thr', type=float, default=2.5,
