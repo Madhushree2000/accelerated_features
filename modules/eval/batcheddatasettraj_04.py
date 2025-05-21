@@ -50,10 +50,12 @@ class CustomDataset(Dataset):
         h1, w1 = data['size0_hw']
         h2, w2 = data['size1_hw']
 
-        # Construct the full path to the images
-        # Assuming the json file has folder/image structure in the pair_names
-        image0_path = os.path.join(self.root_dir, data['pair_names'][0])
-        image1_path = os.path.join(self.root_dir, data['pair_names'][1])
+        # Get the scene_id (batch folder)
+        scene_id = data['scene_id']
+        
+        # Construct the full path to the images using scene_id as the batch folder
+        image0_path = os.path.join(self.root_dir, scene_id, data['pair_names'][0])
+        image1_path = os.path.join(self.root_dir, scene_id, data['pair_names'][1])
         
         if not os.path.exists(image0_path):
             raise FileNotFoundError(f"Image not found: {image0_path}")
