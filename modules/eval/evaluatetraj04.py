@@ -26,7 +26,9 @@ from modules.eval.batcheddatasettraj_04 import CustomDataset, compute_pose_error
 def parse_args():
     parser = argparse.ArgumentParser(description="Validate and visualize XFeat model checkpoints with custom dataset")
     parser.add_argument('--dataset-dir', type=str, required=True,
-                        help="Path to dataset root containing the 36 folders")
+                        help="Path to dataset root containing the folders")
+    parser.add_argument('--batch-size', type=int, default=50,
+                        help="Batch size for DataLoader (default: 50)")
     parser.add_argument('--json-file', type=str, required=True,
                         help="Path to JSON file with camera calibration and pose information")
     parser.add_argument('--checkpoint-dir', type=str, default='weights/checkpoints',
