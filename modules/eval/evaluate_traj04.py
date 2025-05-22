@@ -17,10 +17,8 @@ import matplotlib.pyplot as plt
 
 # Import the necessary modules from your code
 from modules.xfeat import XFeat
-
-# Import the CustomDataset from our adapted code - make sure this path is correct
-# You can either merge this file with the previous one or import it properly
 from modules.eval.batcheddatasettraj_04 import CustomDataset, compute_pose_error, tensor2bgr
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def parse_args():

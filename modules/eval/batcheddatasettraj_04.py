@@ -20,6 +20,7 @@ import tqdm
 
 # Disable scientific notation
 np.set_printoptions(suppress=True)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class CustomDataset(Dataset):
     """
@@ -66,12 +67,12 @@ class CustomDataset(Dataset):
         image0 = cv2.resize(cv2.imread(image0_path), (w1, h1))
         image1 = cv2.resize(cv2.imread(image1_path), (w2, h2))
 
-        data['image0'] = torch.tensor(image0.astype(np.float32)/255).permute(2,0,1)
-        data['image1'] = torch.tensor(image1.astype(np.float32)/255).permute(2,0,1)
+        data['image0'] = torch.tensor(image0.astype(np.float32)/255).permute(2,0,1).to(device)
+        data['image1'] = torch.tensor(image1.astype(np.float32)/255).permute(2,0,1).to(device)
 
         for k,v in data.items():
             if k not in ('dataset_name', 'scene_id', 'pair_id', 'pair_names', 'size0_hw', 'size1_hw', 'image0', 'image1'):
-                data[k] = torch.tensor(np.array(v, dtype=np.float32))
+                data[k] = torch.tensor(np.array(v, dtype=np.float32)).to(device)
 
         return data
 
@@ -152,9 +153,9 @@ def compute_pose_error(pair):
 
     pts0 = pair['pts0']
     pts1 = pair['pts1']
-    K0 = pair['K0'].cpu().numpy()[0]
-    K1 = pair['K1'].cpu().numpy()[0]
-    T_0to1 = pair['T_0to1'].cpu().numpy()[0]
+    K0 = pair['K0'].to(device).cpu().numpy()[0]
+    K1 = pair['K1'].to(device).cpu().numpy()[0]
+    T_0to1 = pair['T_0to1'].to(device).cpu().numpy()[0]
 
     ret, corrs = estimate_pose_poselib(pts0, pts1, K0, K1, pixel_thr, conf=conf)
 
