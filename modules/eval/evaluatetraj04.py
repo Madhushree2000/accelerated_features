@@ -27,8 +27,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Validate and visualize XFeat model checkpoints with custom dataset")
     parser.add_argument('--dataset-dir', type=str, required=True,
                         help="Path to dataset root containing the folders")
-    parser.add_argument('--batch-size', type=int, default=50,
-                        help="Batch size for DataLoader (default: 50)")
+    parser.add_argument('--batch-number', type=int, default=50,
+                        help="Number of batches to consider for validation (default: 50)")
     parser.add_argument('--json-file', type=str, required=True,
                         help="Path to JSON file with camera calibration and pose information")
     parser.add_argument('--checkpoint-dir', type=str, default='weights/checkpoints',
@@ -56,23 +56,29 @@ def extract_step_from_filename(filename):
     return 0
 
 
-def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_thr=2.5):
+def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_thr=2.5, validation_batches=50):
     """Run validation for a single checkpoint and return metrics."""
     print(f"Validating checkpoint: {checkpoint_path}")
     
     pairs = []
     failed_count = 0
     
-    for idx, d in enumerate(tqdm.tqdm(loader)):
-        if idx >= 50:
-            break
+    # If validation_batches is specified, only use those batches
+    if validation_batches is not None:
+        validation_set = set(validation_batches)
+    
+    for batch_idx, d in enumerate(loader):
+        # Skip batches not in validation set
+        if validation_batches is not None and batch_idx not in validation_set:
+            continue
+            
         try:
             src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
-
+            
             # Delete images to avoid OOM
             del d['image0']
             del d['image1']
-
+            
             # Rescale keypoints
             src_pts = src_pts * d['scale0'].numpy()
             dst_pts = dst_pts * d['scale1'].numpy()
@@ -92,7 +98,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             continue
     
     print(f"Successfully processed {len(pairs)} pairs, failed on {failed_count} pairs")
-    
+     
     # Compute metrics
     print(f"Computing metrics for checkpoint: {checkpoint_path}")
     thresholds = [5, 10, 20]
@@ -133,8 +139,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             }
     
     # Combine metrics
-    metrics = {**auc_metrics, **acc_metrics, 'scene_metrics': scene_metrics}
-    
+    metrics = {**auc_metrics, **acc_metrics, 'scene_metrics': scene_metrics}  
     return metrics
 
 
@@ -413,7 +418,7 @@ def main():
             
             # Run validation
             metrics = run_validation_for_checkpoint(
-                checkpoint_path, matcher_fn, loader, args.ransac_thr
+                checkpoint_path, matcher_fn, loader, args.ransac_thr, args.batch_number
             )
             
             # Store results
