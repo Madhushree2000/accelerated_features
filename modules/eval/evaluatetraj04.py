@@ -129,6 +129,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     # Add per-scene metrics
     scene_metrics = {}
     if len(pairs) > 0 and 'scene_id' in pairs[0]:
+        print(pairs)
         scenes = {}
         for p in pairs:
             print(f"Processing scene {p['scene_id']}")
