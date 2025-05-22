@@ -65,7 +65,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     
     # If validation_batches is specified, only use those batches
     if validation_batches is not None:
-        validation_set = set(validation_batches)
+        validation_set = set(range(0,validation_batches))
     
     for batch_idx, d in enumerate(loader):
         # Skip batches not in validation set
