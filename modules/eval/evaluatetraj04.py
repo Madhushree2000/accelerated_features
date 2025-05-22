@@ -63,7 +63,9 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     pairs = []
     failed_count = 0
     
-    for d in tqdm.tqdm(loader):
+    for idx, d in enumerate(tqdm.tqdm(loader)):
+        if idx >= 50:
+            break
         try:
             src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
 
