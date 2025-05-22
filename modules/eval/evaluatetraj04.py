@@ -108,7 +108,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     for p in pairs:
         et = p['t_err']
         er = p['R_err']
-        
+        print(f"t_err = {et}, R_err = {er}")  # Debugging output 
         # Convert to scalar if needed
         if isinstance(et, (list, np.ndarray)):
             et = np.mean(et) if len(et) > 1 else et[0]
@@ -116,7 +116,8 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             er = np.mean(er) if len(er) > 1 else er[0]
             
         errors.append(max(float(et), float(er)))
-    
+
+    print(f"Max error: {max(errors)}") 
     errors = np.array(errors)
     auc_metrics = compute_auc(errors, thresholds)
     
@@ -142,7 +143,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
                 et = np.mean(et) if len(et) > 1 else et[0]
             if isinstance(er, (list, np.ndarray)):
                 er = np.mean(er) if len(er) > 1 else er[0]
-                
+            print(f"Scene {scene_id}: t_err = {et}, R_err = {er}")  
             scenes[scene_id].append(max(float(et), float(er)))
         
         for scene, scene_errors in scenes.items():
