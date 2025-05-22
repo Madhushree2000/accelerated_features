@@ -103,12 +103,19 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     print(f"Computing metrics for checkpoint: {checkpoint_path}")
     thresholds = [5, 10, 20]
     
-    # Calculate AUC and accuracy
+    # Calculate AUC and accuracy - FIX: Handle list/array values properly
     errors = []
     for p in pairs:
         et = p['t_err']
         er = p['R_err']
-        errors.append(max(et, er))
+        
+        # Convert to scalar if needed
+        if isinstance(et, (list, np.ndarray)):
+            et = np.mean(et) if len(et) > 1 else et[0]
+        if isinstance(er, (list, np.ndarray)):
+            er = np.mean(er) if len(er) > 1 else er[0]
+            
+        errors.append(max(float(et), float(er)))
     
     errors = np.array(errors)
     auc_metrics = compute_auc(errors, thresholds)
@@ -127,7 +134,16 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             scene_id = p['scene_id']
             if scene_id not in scenes:
                 scenes[scene_id] = []
-            scenes[scene_id].append(max(p['t_err'], p['R_err']))
+            
+            # Handle list/array values for scene metrics too
+            et = p['t_err']
+            er = p['R_err']
+            if isinstance(et, (list, np.ndarray)):
+                et = np.mean(et) if len(et) > 1 else et[0]
+            if isinstance(er, (list, np.ndarray)):
+                er = np.mean(er) if len(er) > 1 else er[0]
+                
+            scenes[scene_id].append(max(float(et), float(er)))
         
         for scene, scene_errors in scenes.items():
             scene_errors = np.array(scene_errors)
@@ -147,7 +163,9 @@ def compute_auc(errors, thresholds=[5, 10, 20]):
     """Compute AUC metrics for given errors and thresholds."""
     if len(errors) == 0:
         return {f'auc@{thr}': 0.0 for thr in thresholds}
-        
+    
+    # Ensure errors are scalars and sort them
+    errors = np.array(errors).flatten()  # Flatten in case there are any nested arrays
     errors = [0] + sorted(list(errors))
     recall = list(np.linspace(0, 1, len(errors)))
 
