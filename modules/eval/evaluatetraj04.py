@@ -129,18 +129,24 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     # Add per-scene metrics
     scene_metrics = {}
     if len(pairs) > 0 and 'scene_id' in pairs[0]:
-        print(pairs)
         scenes = {}
         for p in pairs:
             print(f"Processing scene {p['scene_id']}")
             scene_id = p['scene_id']
             if scene_id not in scenes:
                 scenes[scene_id] = []
+                print(f"New scene {scene_id} found")
             
             # Handle list/array values for scene metrics too
-            et = p['t_err']
-            er = p['R_err']
-            print(f"Scene {scene_id}: t_err = {et}, R_err = {er}")
+            try:
+                print(p)
+                et = p['t_err']
+                er = p['R_err']
+                print(f"Scene {scene_id}: t_err = {et}, R_err = {er}")
+            except KeyError as e:
+                print(f"KeyError: {e} in scene {scene_id}")
+                continue
+            
             if isinstance(et, (list, np.ndarray)):
                 et = np.mean(et) if len(et) > 1 else et[0]
             if isinstance(er, (list, np.ndarray)):
