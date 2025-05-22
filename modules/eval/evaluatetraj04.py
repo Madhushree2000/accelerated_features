@@ -108,7 +108,6 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     for p in pairs:
         et = p['t_err']
         er = p['R_err']
-        print(f"t_err = {et}, R_err = {er}")  # Debugging output 
         # Convert to scalar if needed
         if isinstance(et, (list, np.ndarray)):
             et = np.mean(et) if len(et) > 1 else et[0]
@@ -126,12 +125,13 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     for t in thresholds:
         acc = (errors <= t).sum() / len(errors)
         acc_metrics[f'mAcc@{t}'] = float(acc * 100)
-    
+        print(f"mAcc@{t}: {acc_metrics[f'mAcc@{t}']:.2f}%")    
     # Add per-scene metrics
     scene_metrics = {}
     if len(pairs) > 0 and 'scene_id' in pairs[0]:
         scenes = {}
         for p in pairs:
+            print(f"Processing scene {p['scene_id']}")
             scene_id = p['scene_id']
             if scene_id not in scenes:
                 scenes[scene_id] = []
@@ -139,6 +139,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             # Handle list/array values for scene metrics too
             et = p['t_err']
             er = p['R_err']
+            print(f"Scene {scene_id}: t_err = {et}, R_err = {er}")
             if isinstance(et, (list, np.ndarray)):
                 et = np.mean(et) if len(et) > 1 else et[0]
             if isinstance(er, (list, np.ndarray)):
