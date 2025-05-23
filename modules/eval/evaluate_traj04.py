@@ -306,12 +306,11 @@ def main():
         dataset = CustomDataset(json_file=args.json_file, root_dir=args.dataset_dir)
         loader = DataLoader(
             dataset,
-            batch_size=args.batch_size,
+            batch_size=1,
             shuffle=False,
             num_workers=min(4, os.cpu_count()),
             pin_memory=True,
             persistent_workers=True,
-            prefetch_factor=2 if args.batch_size > 1 else None
         )
         print(f"Dataset loaded with {len(dataset)} image pairs")
     except Exception as e:
