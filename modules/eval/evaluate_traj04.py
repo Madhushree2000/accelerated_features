@@ -48,27 +48,21 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     pairs = []
     failed_count = 0
     
-    # Initialize progress bar with leave=False and dynamic description
     pbar = tqdm(loader, leave=False, dynamic_ncols=True, desc="Processing pairs")
     for d in pbar:
         try:
-            # Move batch to GPU
             d = {k: v.to(device) if torch.is_tensor(v) else v for k, v in d.items()}
             
-            # Convert images to numpy while still on GPU
             img0 = (d['image0'][0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
             img1 = (d['image1'][0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
             
             src_pts, dst_pts = matcher_fn(img0, img1)
             
-            # Clean up GPU memory
             del d['image0'], d['image1']
             torch.cuda.empty_cache()
             
-            # Move other tensors to CPU for processing
             d = {k: v.cpu() if torch.is_tensor(v) else v for k, v in d.items()}
             
-            # Rescale keypoints
             src_pts = src_pts * d['scale0'].numpy()
             dst_pts = dst_pts * d['scale1'].numpy()
             
@@ -78,12 +72,18 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
                 
             d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
             compute_pose_error(d)
+            
+            # Critical fix: Check if pose error was computed
+            if 'pose_error' not in d:
+                failed_count += 1
+                continue
+                
             pairs.append(d)
         except Exception as e:
             failed_count += 1
             continue
 
-    # Compute metrics
+    # Compute metrics only from valid pairs
     errors = []
     mAcc_at_5, mAcc_at_10, mAcc_at_20 = [], [], []
     
