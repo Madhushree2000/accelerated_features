@@ -20,7 +20,13 @@ import tqdm
 
 # Disable scientific notation
 np.set_printoptions(suppress=True)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+    torch.backends.cudnn.benchmark = True  # Enable cuDNN benchmark
+else:
+    device = torch.device('cpu')
+    print("Warning: CUDA not available, falling back to CPU")
 
 class CustomDataset(Dataset):
     """
@@ -47,33 +53,26 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         data = copy.deepcopy(self.data[idx])
-
+        
         h1, w1 = data['size0_hw']
         h2, w2 = data['size1_hw']
-
-        # Get the scene_id (batch folder)
-        scene_id = data['scene_id']
         
-        # Construct the full path to the images using scene_id as the batch folder
+        scene_id = data['scene_id']
         image0_path = os.path.join(self.root_dir, scene_id, data['pair_names'][0])
         image1_path = os.path.join(self.root_dir, scene_id, data['pair_names'][1])
         
-        if not os.path.exists(image0_path):
-            raise FileNotFoundError(f"Image not found: {image0_path}")
-        if not os.path.exists(image1_path):
-            raise FileNotFoundError(f"Image not found: {image1_path}")
-
         # Read and resize images
         image0 = cv2.resize(cv2.imread(image0_path), (w1, h1))
         image1 = cv2.resize(cv2.imread(image1_path), (w2, h2))
-
-        data['image0'] = torch.tensor(image0.astype(np.float32)/255).permute(2,0,1).to(device)
-        data['image1'] = torch.tensor(image1.astype(np.float32)/255).permute(2,0,1).to(device)
-
+        
+        # Keep as CPU tensors here, will move to GPU later
+        data['image0'] = torch.tensor(image0.astype(np.float32)/255).permute(2,0,1)
+        data['image1'] = torch.tensor(image1.astype(np.float32)/255).permute(2,0,1)
+        
         for k,v in data.items():
             if k not in ('dataset_name', 'scene_id', 'pair_id', 'pair_names', 'size0_hw', 'size1_hw', 'image0', 'image1'):
-                data[k] = torch.tensor(np.array(v, dtype=np.float32)).to(device)
-
+                data[k] = torch.tensor(np.array(v, dtype=np.float32))
+        
         return data
 
 
@@ -130,40 +129,21 @@ def tensor2bgr(t):
 
 
 def compute_pose_error(pair):
-    """ 
-    Input:
-        pair (dict):{
-            "pts0": ndrray(N,2)
-            "pts1": ndrray(N,2)
-            "K0": ndrray(3,3)
-            "K1": ndrray(3,3)
-            "T_0to1": ndrray(4,4)
-
-        }
-    Update:
-        pair (dict):{
-            "R_err" List[float]: [N]
-            "t_err" List[float]: [N]
-            "inliers" List[np.ndarray]: [N]
-        }
-    """
     pixel_thr = 1.0 if 'ransac_thr' not in pair else pair['ransac_thr']
     conf = 0.99999
     pair.update({'R_err':  np.inf, 't_err': np.inf, 'inliers': []})
 
     pts0 = pair['pts0']
     pts1 = pair['pts1']
-    K0 = pair['K0'].to(device).cpu().numpy()[0]
-    K1 = pair['K1'].to(device).cpu().numpy()[0]
-    T_0to1 = pair['T_0to1'].to(device).cpu().numpy()[0]
+    K0 = pair['K0'].numpy()[0]  # Already on CPU from previous step
+    K1 = pair['K1'].numpy()[0]
+    T_0to1 = pair['T_0to1'].numpy()[0]
 
     ret, corrs = estimate_pose_poselib(pts0, pts1, K0, K1, pixel_thr, conf=conf)
 
     if ret is not None:
         R, t, inliers = ret
-
         t_err, R_err = relative_pose_error(T_0to1, R, t, ignore_gt_t_thr=0.0)
-
         pair['R_err'] = R_err
         pair['t_err'] = t_err
 
@@ -248,17 +228,26 @@ def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
     
     for d in tqdm.tqdm(loader):
         try:
-            src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
+            # Move batch to GPU
+            d = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k,v in d.items()}
+
+            # Convert images to numpy while still on GPU
+            img0 = d['image0'][0].permute(1,2,0).cpu().numpy()*255
+            img1 = d['image1'][0].permute(1,2,0).cpu().numpy()*255
+
+            src_pts, dst_pts = matcher_fn(img0.astype(np.uint8), img1.astype(np.uint8))
             
-            # Delete images to avoid OOM
-            del d['image0']
-            del d['image1']
+            # Clean up GPU memory
+            del d['image0'], d['image1']
+            torch.cuda.empty_cache()
+            
+            # Move other tensors to CPU for processing
+            d = {k: v.cpu() if isinstance(v, torch.Tensor) else v for k,v in d.items()}
             
             # Rescale keypoints
             src_pts = src_pts * d['scale0'].numpy()
             dst_pts = dst_pts * d['scale1'].numpy()
             
-            # Skip if no matches found
             if len(src_pts) < 8:
                 print(f"Warning: Not enough matches ({len(src_pts)}) for pair {cnt}, skipping...")
                 failed_pairs += 1
@@ -273,11 +262,6 @@ def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
             failed_pairs += 1
             
         cnt += 1
-
-    print(f"Processed {cnt} pairs, {failed_pairs} failed")
-    compute_maa(pairs)
-    
-    return pairs  # Return pairs for possible further analysis
 
 
 def validate_json_structure(json_file):
@@ -329,69 +313,142 @@ def parse_args():
 
 
 if __name__ == '__main__':
-
+    # Initialize CUDA and multiprocessing
+    import torch.multiprocessing as mp
+    torch.backends.cudnn.benchmark = True
+    mp.set_start_method('spawn', force=True)
+    
     args = parse_args()
     
+    # Verify CUDA availability
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is not available. This script requires GPU acceleration.")
+    device = torch.device('cuda')
+    print(f"\nRunning on {torch.cuda.get_device_name(0)}")
+    print(f"CUDA memory - Allocated: {torch.cuda.memory_allocated()/1024**2:.2f}MB, "
+          f"Cached: {torch.cuda.memory_reserved()/1024**2:.2f}MB\n")
+
     # Validate JSON file structure
     if not validate_json_structure(args.json_file):
         print("JSON validation failed. Please check the format of your JSON file.")
         sys.exit(1)
     
-    # Initialize dataset
-    dataset = CustomDataset(json_file=args.json_file, root_dir=args.dataset_dir)
-    
-    # Create data loader
-    loader = DataLoader(dataset, 
-                        batch_size=args.batch_size, 
-                        shuffle=False,
-                        num_workers=4)
-    
-    # Run benchmark with selected matcher
-    if args.matcher == 'xfeat':
-        print("Running benchmark for XFeat..")
-        from modules.xfeat import XFeat
-        xfeat = XFeat()
-        results = run_pose_benchmark(matcher_fn=xfeat.match_xfeat, 
-                                     loader=loader, 
-                                     ransac_thr=args.ransac_thr)
-    
-    elif args.matcher == 'xfeat-star':
-        from modules.xfeat import XFeat
-        print("Running benchmark for XFeat*..")
-        xfeat = XFeat(top_k=10_000)
-        results = run_pose_benchmark(matcher_fn=xfeat.match_xfeat_star, 
-                                     loader=loader, 
-                                     ransac_thr=args.ransac_thr)
-    
-    elif args.matcher == 'alike':
-        from third_party import alike_wrapper as alike
-        print("Running benchmark for ALIKE..")
-        results = run_pose_benchmark(matcher_fn=alike.match_alike, 
-                                     loader=loader, 
-                                     ransac_thr=args.ransac_thr)
-    
-    # Save results to file
+    # Initialize dataset with proper device handling
+    try:
+        dataset = CustomDataset(json_file=args.json_file, root_dir=args.dataset_dir)
+        
+        # Optimized DataLoader configuration
+        loader = DataLoader(
+            dataset, 
+            batch_size=args.batch_size, 
+            shuffle=False,
+            num_workers=min(4, os.cpu_count()),  # Dynamic worker count
+            pin_memory=True,
+            persistent_workers=True,
+            prefetch_factor=2 if args.batch_size > 1 else None
+        )
+        print(f"Dataset loaded with {len(dataset)} image pairs")
+    except Exception as e:
+        print(f"Error initializing dataset: {e}")
+        sys.exit(1)
+
+    # Benchmark with selected matcher - CUDA optimized
+    results = []
+    try:
+        if args.matcher == 'xfeat':
+            print("Running benchmark for XFeat with CUDA optimization..")
+            from modules.xfeat import XFeat
+            xfeat = XFeat().to(device).eval()  # Explicit device and eval mode
+            
+            def wrapped_matcher(img0, img1):
+                with torch.no_grad(), torch.cuda.amp.autocast():
+                    return xfeat.match_xfeat(img0, img1)
+                    
+            results = run_pose_benchmark(
+                matcher_fn=wrapped_matcher, 
+                loader=loader, 
+                ransac_thr=args.ransac_thr
+            )
+            
+        elif args.matcher == 'xfeat-star':
+            from modules.xfeat import XFeat
+            print("Running benchmark for XFeat* with CUDA optimization..")
+            xfeat = XFeat(top_k=args.top_k).to(device).eval()
+            
+            def wrapped_matcher(img0, img1):
+                with torch.no_grad(), torch.cuda.amp.autocast():
+                    return xfeat.match_xfeat_star(img0, img1)
+                    
+            results = run_pose_benchmark(
+                matcher_fn=wrapped_matcher,
+                loader=loader,
+                ransac_thr=args.ransac_thr
+            )
+            
+        elif args.matcher == 'alike':
+            from third_party import alike_wrapper as alike
+            print("Running benchmark for ALIKE with CUDA optimization..")
+            alike_model = alike.ALike().to(device).eval()
+            
+            def wrapped_matcher(img0, img1):
+                with torch.no_grad(), torch.cuda.amp.autocast():
+                    return alike_model.match_alike(img0, img1)
+                    
+            results = run_pose_benchmark(
+                matcher_fn=wrapped_matcher,
+                loader=loader,
+                ransac_thr=args.ransac_thr
+            )
+            
+    except Exception as e:
+        print(f"Error during benchmark: {e}")
+        print(f"GPU Memory at error: {torch.cuda.memory_allocated()/1024**2:.2f}MB")
+        torch.cuda.empty_cache()
+        sys.exit(1)
+
+    # Save results with enhanced metadata
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     result_file = f"results_{args.matcher}_{timestamp}.json"
     
-    # Convert results to serializable format
-    serializable_results = {}
-    serializable_results['matcher'] = args.matcher
-    serializable_results['ransac_thr'] = args.ransac_thr
-    serializable_results['num_pairs'] = len(results)
-    
-    # Save per-pair error metrics
-    pair_errors = []
-    for p in results:
-        pair_errors.append({
-            'scene_id': p['scene_id'] if 'scene_id' in p else 'unknown',
-            'pair_id': p['pair_id'] if 'pair_id' in p else 'unknown',
-            'R_err': float(p['R_err']),
-            't_err': float(p['t_err'])
-        })
-    serializable_results['pair_errors'] = pair_errors
-    
-    with open(result_file, 'w') as f:
-        json.dump(serializable_results, f, indent=2)
-    
-    print(f"Results saved to {result_file}")
+    serializable_results = {
+        "metadata": {
+            "matcher": args.matcher,
+            "ransac_threshold": args.ransac_thr,
+            "device": str(device),
+            "timestamp": timestamp,
+            "dataset": os.path.basename(args.dataset_dir),
+            "num_pairs": len(results)
+        },
+        "pair_errors": [
+            {
+                'scene_id': p.get('scene_id', 'unknown'),
+                'pair_id': p.get('pair_id', 'unknown'),
+                'R_err': float(p['R_err']),
+                't_err': float(p['t_err']),
+                'num_matches': len(p.get('pts0', [])) if 'pts0' in p else 0
+            } for p in results
+        ],
+        "statistics": {
+            "mean_R_err": np.mean([p['R_err'] for p in results]),
+            "mean_t_err": np.mean([p['t_err'] for p in results]),
+            "success_rate": len(results)/len(dataset)*100
+        }
+    }
+
+    try:
+        with open(result_file, 'w') as f:
+            json.dump(serializable_results, f, indent=2)
+        print(f"\nResults successfully saved to {result_file}")
+        print(f"Final GPU memory usage: {torch.cuda.memory_allocated()/1024**2:.2f}MB")
+    except Exception as e:
+        print(f"Error saving results: {e}")
+        # Emergency save
+        try:
+            with open(f"emergency_results_{timestamp}.json", 'w') as f:
+                json.dump({"pair_errors": serializable_results["pair_errors"]}, f)
+            print("Emergency results saved")
+        except:
+            print("Failed to save emergency results")
+
+    # Clean up
+    torch.cuda.empty_cache()
