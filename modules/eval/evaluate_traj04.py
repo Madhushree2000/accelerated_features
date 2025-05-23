@@ -1,28 +1,23 @@
-"""
-Checkpoint evaluation and visualization script for XFeat model with Custom Dataset.
-This script loads and evaluates XFeat checkpoints and generates plots of performance metrics
-using the custom dataset with 36 folders of 12 images each.
-"""
-
 import os
 import re
 import argparse
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
-import tqdm
+from tqdm import tqdm
 import json
+import time
 from pathlib import Path
-import matplotlib.pyplot as plt
 
 # Import the necessary modules from your code
 from modules.xfeat import XFeat
-from modules.eval.batcheddatasettraj_04 import CustomDataset, compute_pose_error, tensor2bgr
+from modules.eval.batcheddatasettraj_04 import CustomDataset, compute_pose_error
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Validate and visualize XFeat model checkpoints with custom dataset")
+    parser = argparse.ArgumentParser(description="Validate XFeat model checkpoints with custom dataset")
     parser.add_argument('--dataset-dir', type=str, required=True,
                         help="Path to dataset root containing the 36 folders")
     parser.add_argument('--json-file', type=str, required=True,
@@ -37,8 +32,6 @@ def parse_args():
                         help="Top-K keypoints to use for XFeat* (default: 10000)")
     parser.add_argument('--output-file', type=str, default='validation_results.json',
                         help="JSON file to save validation results")
-    parser.add_argument('--plots-dir', type=str, default='plots',
-                        help="Directory to save visualization plots")
     parser.add_argument('--num-workers', type=int, default=4,
                         help="Number of worker processes for data loading")
     return parser.parse_args()
@@ -47,26 +40,24 @@ def parse_args():
 def extract_step_from_filename(filename):
     """Extract step number from checkpoint filename."""
     match = re.search(r'_(\d+)\.pth$', filename)
-    if match:
-        return int(match.group(1))
-    return 0
+    return int(match.group(1)) if match else 0
 
 
 def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_thr=2.5):
     """Run validation for a single checkpoint and return metrics."""
-    print(f"Validating checkpoint: {checkpoint_path}")
-    
     pairs = []
     failed_count = 0
     
-    for d in tqdm.tqdm(loader):
+    # Initialize progress bar with leave=False and dynamic description
+    pbar = tqdm(loader, leave=False, dynamic_ncols=True, desc="Processing pairs")
+    for d in pbar:
         try:
             # Move batch to GPU
-            d = {k: v.to(device) if torch.is_tensor(v) else v for k,v in d.items()}
+            d = {k: v.to(device) if torch.is_tensor(v) else v for k, v in d.items()}
             
             # Convert images to numpy while still on GPU
-            img0 = (d['image0'][0].permute(1,2,0).cpu().numpy()*255).astype(np.uint8)
-            img1 = (d['image1'][0].permute(1,2,0).cpu().numpy()*255).astype(np.uint8)
+            img0 = (d['image0'][0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+            img1 = (d['image1'][0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
             
             src_pts, dst_pts = matcher_fn(img0, img1)
             
@@ -75,14 +66,13 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             torch.cuda.empty_cache()
             
             # Move other tensors to CPU for processing
-            d = {k: v.cpu() if torch.is_tensor(v) else v for k,v in d.items()}
+            d = {k: v.cpu() if torch.is_tensor(v) else v for k, v in d.items()}
             
             # Rescale keypoints
             src_pts = src_pts * d['scale0'].numpy()
             dst_pts = dst_pts * d['scale1'].numpy()
             
             if len(src_pts) < 8:
-                print(f"Warning: Not enough matches ({len(src_pts)}), skipping pair")
                 failed_count += 1
                 continue
                 
@@ -90,17 +80,38 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             compute_pose_error(d)
             pairs.append(d)
         except Exception as e:
-            print(f"Error processing image pair: {e}")
             failed_count += 1
             continue
+
+    # Compute metrics
+    errors = []
+    mAcc_at_5, mAcc_at_10, mAcc_at_20 = [], [], []
+    
+    for pair in pairs:
+        error = pair['pose_error'].item()
+        errors.append(error)
+        mAcc_at_5.append(100.0 if error <= 5 else 0.0)
+        mAcc_at_10.append(100.0 if error <= 10 else 0.0)
+        mAcc_at_20.append(100.0 if error <= 20 else 0.0)
+
+    auc_metrics = compute_auc(errors)
+    metrics = {
+        **auc_metrics,
+        'mAcc@5': np.mean(mAcc_at_5) if mAcc_at_5 else 0.0,
+        'mAcc@10': np.mean(mAcc_at_10) if mAcc_at_10 else 0.0,
+        'mAcc@20': np.mean(mAcc_at_20) if mAcc_at_20 else 0.0,
+        'failed_pairs': failed_count
+    }
+    
+    return metrics
 
 
 def compute_auc(errors, thresholds=[5, 10, 20]):
     """Compute AUC metrics for given errors and thresholds."""
-    if len(errors) == 0:
+    if not errors:
         return {f'auc@{thr}': 0.0 for thr in thresholds}
         
-    errors = [0] + sorted(list(errors))
+    errors = [0] + sorted(errors)
     recall = list(np.linspace(0, 1, len(errors)))
 
     auc_metrics = {}
@@ -109,361 +120,78 @@ def compute_auc(errors, thresholds=[5, 10, 20]):
         y = recall[:last_index] + [recall[last_index-1]]
         x = errors[:last_index] + [thr]
         auc = np.trapz(y, x) / thr
-        auc_metrics[f'auc@{thr}'] = float(auc * 100)
+        auc_metrics[f'auc@{thr}'] = auc * 100
 
     return auc_metrics
 
 
-def plot_metrics(results, output_dir):
-    """Generate plots for AUC and mAcc metrics across checkpoints."""
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Extract steps and organize metrics
-    steps = sorted(int(step) for step in results.keys())
-    if not steps:
-        print("No valid results to plot")
-        return
-        
-    metrics_data = {
-        'auc@5': [],
-        'auc@10': [],
-        'auc@20': [],
-        'mAcc@5': [],
-        'mAcc@10': [],
-        'mAcc@20': []
-    }
-    
-    for step in steps:
-        step_metrics = results[str(step)]["metrics"]
-        for metric in metrics_data.keys():
-            if metric in step_metrics:
-                metrics_data[metric].append(step_metrics[metric])
-            else:
-                metrics_data[metric].append(0)  # Default if metric is missing
-    
-    # Create AUC plot
-    plt.figure(figsize=(10, 6))
-    plt.title('AUC Metrics Across Training Steps')
-    plt.plot(steps, metrics_data['auc@5'], 'b-', label='AUC@5')
-    plt.plot(steps, metrics_data['auc@10'], 'g-', label='AUC@10')
-    plt.plot(steps, metrics_data['auc@20'], 'r-', label='AUC@20')
-    plt.xlabel('Training Step')
-    plt.ylabel('AUC (%)')
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'auc_metrics.png'), dpi=300)
-    plt.close()
-    
-    # Create mAcc plot
-    plt.figure(figsize=(10, 6))
-    plt.title('mAcc Metrics Across Training Steps')
-    plt.plot(steps, metrics_data['mAcc@5'], 'b-', label='mAcc@5')
-    plt.plot(steps, metrics_data['mAcc@10'], 'g-', label='mAcc@10')
-    plt.plot(steps, metrics_data['mAcc@20'], 'r-', label='mAcc@20')
-    plt.xlabel('Training Step')
-    plt.ylabel('Accuracy (%)')
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'macc_metrics.png'), dpi=300)
-    plt.close()
-    
-    # Create combined plot with all metrics
-    plt.figure(figsize=(12, 8))
-    plt.title('All Metrics Across Training Steps')
-    
-    # Plot AUC metrics with solid lines
-    plt.plot(steps, metrics_data['auc@5'], 'b-', label='AUC@5')
-    plt.plot(steps, metrics_data['auc@10'], 'g-', label='AUC@10')
-    plt.plot(steps, metrics_data['auc@20'], 'r-', label='AUC@20')
-    
-    # Plot mAcc metrics with dashed lines
-    plt.plot(steps, metrics_data['mAcc@5'], 'b--', label='mAcc@5')
-    plt.plot(steps, metrics_data['mAcc@10'], 'g--', label='mAcc@10')
-    plt.plot(steps, metrics_data['mAcc@20'], 'r--', label='mAcc@20')
-    
-    plt.xlabel('Training Step')
-    plt.ylabel('Metric Value (%)')
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'all_metrics.png'), dpi=300)
-    plt.close()
-    
-    # Create per-scene performance plot for last checkpoint (if available)
-    latest_result = results[str(steps[-1])]
-    if 'scene_metrics' in latest_result['metrics']:
-        scene_metrics = latest_result['metrics']['scene_metrics']
-        scene_ids = sorted(scene_metrics.keys())
-        
-        if scene_ids:
-            # Extract mAcc@10 for each scene
-            scene_accs = [scene_metrics[scene]['mAcc@10'] for scene in scene_ids]
-            scene_counts = [scene_metrics[scene]['count'] for scene in scene_ids]
-            
-            # Generate scene labels with count
-            scene_labels = [f"{scene.replace('scene_', '')} ({count})" for scene, count in zip(scene_ids, scene_counts)]
-            
-            # Sort by accuracy
-            sorted_indices = np.argsort(scene_accs)
-            sorted_accs = [scene_accs[i] for i in sorted_indices]
-            sorted_labels = [scene_labels[i] for i in sorted_indices]
-            
-            # Plot the per-scene performance
-            plt.figure(figsize=(14, 8))
-            plt.title(f'Per-Scene Performance (mAcc@10) - Checkpoint {steps[-1]}')
-            plt.barh(sorted_labels, sorted_accs)
-            plt.axvline(x=np.mean(scene_accs), color='r', linestyle='--', label=f'Average: {np.mean(scene_accs):.1f}%')
-            plt.xlabel('mAcc@10 (%)')
-            plt.ylabel('Scene ID (count)')
-            plt.grid(True, linestyle='--', alpha=0.7)
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, 'scene_performance.png'), dpi=300)
-            plt.close()
-    
-    print(f"Plots saved to directory: {output_dir}")
-
-
-def load_results_if_exists(output_file):
-    """Load existing results from JSON file if it exists."""
-    if os.path.exists(output_file) and os.path.isfile(output_file):
-        try:
-            with open(output_file, 'r') as f:
-                data = json.load(f)
-                return data.get("results", {})
-        except Exception as e:
-            print(f"Error loading existing results: {e}")
-    return {}
-
-
-def validate_json_structure(json_file):
-    """
-    Validates that the JSON file has the expected structure compatible with the dataset.
-    """
-    try:
-        with open(json_file, 'r') as f:
-            data = json.load(f)
-        
-        if len(data) == 0:
-            print("Warning: JSON file contains no entries")
-            return False
-            
-        required_keys = ['pair_names', 'size0_hw', 'size1_hw', 'K0', 'K1', 'T_0to1', 'scene_id']
-        sample = data[0]
-        
-        for key in required_keys:
-            if key not in sample:
-                print(f"Error: Required key '{key}' missing from JSON data")
-                return False
-                
-        # Check pair_names structure
-        if not (isinstance(sample['pair_names'], list) and len(sample['pair_names']) == 2):
-            print("Error: 'pair_names' should be a list with 2 elements")
-            return False
-            
-        print(f"JSON validation successful: {len(data)} entries found")
-        return True
-        
-    except Exception as e:
-        print(f"Error validating JSON file: {e}")
-        return False
-
-
 def main():
-    # Parse arguments and initialize CUDA
     args = parse_args()
-    
-    # Verify CUDA availability and print device info
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA is not available. This script requires GPU acceleration.")
-    device = torch.device('cuda')
-    print(f"\nUsing device: {device}")
-    print(f"GPU: {torch.cuda.get_device_name(0)}")
-    print(f"CUDA memory: Allocated={torch.cuda.memory_allocated()/1024**2:.2f}MB, "
-          f"Reserved={torch.cuda.memory_reserved()/1024**2:.2f}MB\n")
+    torch.backends.cudnn.benchmark = True
 
-    # Validate JSON structure
-    if not validate_json_structure(args.json_file):
-        print("JSON validation failed. Please check your JSON file format.")
-        return
+    # Initialize dataset and data loader
+    dataset = CustomDataset(json_file=args.json_file, root_dir=args.dataset_dir)
+    loader = DataLoader(
+        dataset,
+        batch_size=1,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True
+    )
 
-    # Setup directories and paths
-    checkpoint_dir = args.checkpoint_dir
-    if not os.path.exists(checkpoint_dir):
-        raise FileNotFoundError(f"Checkpoint directory not found: {checkpoint_dir}")
-
-    output_path = args.output_file
-    if os.path.exists(output_path) and os.path.isdir(output_path):
-        output_path = os.path.join(output_path, "validation_results.json")
-        print(f"Output path is a directory. Changed to {output_path}")
-
-    os.makedirs(args.plots_dir, exist_ok=True)
-
-    # Initialize dataset and data loader with optimized settings
-    try:
-        dataset = CustomDataset(json_file=args.json_file, root_dir=args.dataset_dir)
-        loader = DataLoader(
-            dataset,
-            batch_size=1,
-            shuffle=False,
-            num_workers=min(4, os.cpu_count()),
-            pin_memory=True,
-            persistent_workers=True,
-        )
-        print(f"Dataset loaded with {len(dataset)} image pairs")
-    except Exception as e:
-        print(f"Error loading dataset: {e}")
-        return
-
-    # Load existing results if available
-    existing_results = load_results_if_exists(output_path)
-    
     # Find and sort checkpoint files
     checkpoint_files = sorted(
-        [f for f in os.listdir(checkpoint_dir) if f.endswith('.pth')],
+        [f for f in os.listdir(args.checkpoint_dir) if f.endswith('.pth')],
         key=extract_step_from_filename
     )
-    
-    if not checkpoint_files:
-        print(f"No checkpoint files found in {checkpoint_dir}")
-        return
-    
-    print(f"Found {len(checkpoint_files)} checkpoint files")
-    results = existing_results
 
-    # Process each checkpoint
-    for checkpoint_file in tqdm.tqdm(checkpoint_files, desc="Processing checkpoints"):
-        checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
+    results = {}
+    checkpoint_iterator = tqdm(checkpoint_files, desc="Processing checkpoints", dynamic_ncols=True)
+    
+    for checkpoint_file in checkpoint_iterator:
+        checkpoint_path = os.path.join(args.checkpoint_dir, checkpoint_file)
         step = extract_step_from_filename(checkpoint_file)
         
         if str(step) in results:
-            print(f"Skipping already processed checkpoint: {checkpoint_file}")
             continue
+
+        # Load model
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        model = XFeat(top_k=args.top_k) if args.use_star else XFeat()
+        model.load_state_dict(checkpoint, strict=False)
+        model = model.to(device).eval()
         
-        # Initialize model with proper CUDA handling
-        try:
-            # Load checkpoint to CPU first
-            checkpoint = torch.load(checkpoint_path, map_location='cpu')
-            
-            # Initialize model based on arguments
-            if args.use_star:
-                model = XFeat(top_k=args.top_k)
-                model_type = "XFeat*"
-            else:
-                model = XFeat()
-                model_type = "XFeat"
-            
-            # Handle state dict keys and load model
-            state_dict = {k.replace('module.', '').replace('net.', ''): v 
-                         for k,v in checkpoint.items()}
-            model.load_state_dict(state_dict, strict=False)
-            model = model.to(device).eval()
-            
-            # Create matcher function with proper CUDA handling
-            def matcher_fn(img0, img1):
-                with torch.no_grad(), torch.cuda.amp.autocast():
-                    if args.use_star:
-                        return model.match_xfeat_star(img0, img1)
-                    return model.match_xfeat(img0, img1)
-
-            # Run validation with memory monitoring
-            torch.cuda.empty_cache()
-            metrics = run_validation_for_checkpoint(
-                checkpoint_path, matcher_fn, loader, args.ransac_thr
-            )
-            
-            # Store results
-            results[str(step)] = {
-                "file": checkpoint_file,
-                "step": step,
-                "model_type": model_type,
-                "metrics": metrics
-            }
-
-            # Print and save incremental results
-            print(f"\nResults for {checkpoint_file} (Step {step}):")
-            print(f"GPU Memory after processing: Allocated={torch.cuda.memory_allocated()/1024**2:.2f}MB")
-            for metric, value in metrics.items():
-                if metric != 'scene_metrics':
-                    print(f"{metric}: {value:.2f}")
-
-            # Save incremental results
-            try:
-                with open(output_path, 'w') as f:
-                    json.dump({
-                        "config": {
-                            "ransac_threshold": args.ransac_thr,
-                            "model_type": model_type,
-                            "device": str(device),
-                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-                        },
-                        "results": results
-                    }, f, indent=2)
-            except Exception as e:
-                print(f"Warning: Could not save incremental results: {e}")
-
-        except Exception as e:
-            print(f"\nError processing checkpoint {checkpoint_file}: {e}")
-            print(f"GPU Memory at error: Allocated={torch.cuda.memory_allocated()/1024**2:.2f}MB")
-            torch.cuda.empty_cache()
-
-    # Final results processing
-    try:
-        # Save final results with additional metadata
-        final_results = {
-            "config": {
-                "dataset": args.dataset_dir,
-                "matcher": model_type,
-                "ransac_threshold": args.ransac_thr,
-                "device": str(device),
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-            },
-            "statistics": {
-                "total_checkpoints": len(checkpoint_files),
-                "processed_checkpoints": len(results),
-                "success_rate": len(results)/len(checkpoint_files)*100
-            },
-            "results": results
+        # Create matcher function
+        matcher_fn = model.match_xfeat_star if args.use_star else model.match_xfeat
+        
+        # Run validation
+        metrics = run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, args.ransac_thr)
+        
+        # Store and print results
+        results[str(step)] = {
+            "file": checkpoint_file,
+            "step": step,
+            "metrics": metrics
         }
 
-        with open(output_path, 'w') as f:
-            json.dump(final_results, f, indent=2)
-        print(f"\nFinal results saved to {output_path}")
+        # Print formatted results
+        print(f"\nResults for {checkpoint_file} (Step {step}):")
+        print(f"auc@5: {metrics['auc@5']:.2f}")
+        print(f"auc@10: {metrics['auc@10']:.2f}")
+        print(f"auc@20: {metrics['auc@20']:.2f}")
+        print(f"mAcc@5: {metrics['mAcc@5']:.2f}")
+        print(f"mAcc@10: {metrics['mAcc@10']:.2f}")
+        print(f"mAcc@20: {metrics['mAcc@20']:.2f}")
 
-        # Generate plots and show best checkpoint
-        if results:
-            plot_metrics(results, args.plots_dir)
-            best_step = max(results.keys(), key=lambda s: results[s]["metrics"]["auc@10"])
-            best = results[best_step]
-            print("\n=== Best Checkpoint ===")
-            print(f"Step: {best_step} | File: {best['file']}")
-            print("Metrics:")
-            for metric, value in best["metrics"].items():
-                if metric != 'scene_metrics':
-                    print(f"{metric}: {value:.2f}")
-        else:
-            print("No valid results to plot.")
+        # Save incremental results
+        with open(args.output_file, 'w') as f:
+            json.dump({
+                "config": vars(args),
+                "results": results
+            }, f, indent=2)
 
-    except Exception as e:
-        print(f"\nError in final processing: {e}")
-        # Emergency save if final save fails
-        try:
-            with open("emergency_results.json", 'w') as f:
-                json.dump({"results": results}, f)
-            print("Emergency results saved to emergency_results.json")
-        except:
-            print("Could not save emergency results")
+    print(f"\nFinal results saved to {args.output_file}")
 
 
 if __name__ == "__main__":
-    import torch.multiprocessing as mp
-    mp.set_start_method('spawn', force=True)
-    
-    # Set up CUDA optimization flags
-    torch.backends.cudnn.benchmark = True
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
-    
     main()
