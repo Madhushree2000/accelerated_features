@@ -4,7 +4,7 @@ import argparse
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
-from tqdm import tqdm
+import tqdm
 import json
 import time
 from pathlib import Path
