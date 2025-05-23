@@ -48,8 +48,7 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     pairs = []
     failed_count = 0
     
-    pbar = tqdm(loader, leave=False, dynamic_ncols=True, desc="Processing pairs")
-    for d in pbar:
+    for d in tqdm.tqdm(loader):
         try:
             d = {k: v.to(device) if torch.is_tensor(v) else v for k, v in d.items()}
             
@@ -84,34 +83,43 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
             continue
 
     # Compute metrics only from valid pairs
-    errors = []
-    mAcc_at_5, mAcc_at_10, mAcc_at_20 = [], [], []
+    # errors = []
+    # mAcc_at_5, mAcc_at_10, mAcc_at_20 = [], [], []
     
-    for pair in pairs:
-        error = pair['pose_error'].item()
-        errors.append(error)
-        mAcc_at_5.append(100.0 if error <= 5 else 0.0)
-        mAcc_at_10.append(100.0 if error <= 10 else 0.0)
-        mAcc_at_20.append(100.0 if error <= 20 else 0.0)
+    # for pair in pairs:
+    #     error = pair['pose_error'].item()
+    #     errors.append(error)
+    #     mAcc_at_5.append(100.0 if error <= 5 else 0.0)
+    #     mAcc_at_10.append(100.0 if error <= 10 else 0.0)
+    #     mAcc_at_20.append(100.0 if error <= 20 else 0.0)
 
-    auc_metrics = compute_auc(errors)
-    metrics = {
-        **auc_metrics,
-        'mAcc@5': np.mean(mAcc_at_5) if mAcc_at_5 else 0.0,
-        'mAcc@10': np.mean(mAcc_at_10) if mAcc_at_10 else 0.0,
-        'mAcc@20': np.mean(mAcc_at_20) if mAcc_at_20 else 0.0,
-        'failed_pairs': failed_count
-    }
-    
-    return metrics
+    # Calculate AUC and accuracy
+        errors = []
+        thresholds = [5, 10, 20]
+        for p in pairs:
+            et = p['t_err']
+            er = p['R_err']
+            errors.append(max(et, er))
+        
+        errors = np.array(errors)
+        auc_metrics = compute_auc(errors, thresholds)
+
+        # Calculate accuracy metrics
+        acc_metrics = {}
+        for t in thresholds:
+            acc = (errors <= t).sum() / len(errors)
+            acc_metrics[f'mAcc@{t}'] = float(acc * 100)
+        
+        # Combine metrics
+        metrics = {**auc_metrics, **acc_metrics}
+        
+        return metrics
 
 
 def compute_auc(errors, thresholds=[5, 10, 20]):
     """Compute AUC metrics for given errors and thresholds."""
-    if not errors:
-        return {f'auc@{thr}': 0.0 for thr in thresholds}
         
-    errors = [0] + sorted(errors)
+    errors = [0] + sorted(list(errors))
     recall = list(np.linspace(0, 1, len(errors)))
 
     auc_metrics = {}
@@ -120,7 +128,7 @@ def compute_auc(errors, thresholds=[5, 10, 20]):
         y = recall[:last_index] + [recall[last_index-1]]
         x = errors[:last_index] + [thr]
         auc = np.trapz(y, x) / thr
-        auc_metrics[f'auc@{thr}'] = auc * 100
+        auc_metrics[f'auc@{thr}'] = float(auc * 100)
 
     return auc_metrics
 
