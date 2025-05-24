@@ -189,20 +189,79 @@ def compute_maa(pairs, thresholds=[5, 10, 20]):
         print("mAcc@%d: %.1f "%(t, acc*100))
     
     # Additionally, compute per-folder performance
-    if len(pairs) > 0 and 'scene_id' in pairs[0]:
-        print("\nPer-folder performance:")
-        folders = {}
-        for p in pairs:
-            scene_id = p['scene_id']
-            if scene_id not in folders:
-                folders[scene_id] = []
-            folders[scene_id].append(max(p['t_err'], p['R_err']))
+    # if len(pairs) > 0 and 'scene_id' in pairs[0]:
+    #     print("\nPer-folder performance:")
+    #     folders = {}
+    #     for p in pairs:
+    #         scene_id = p['scene_id']
+    #         if scene_id not in folders:
+    #             folders[scene_id] = []
+    #         folders[scene_id].append(max(p['t_err'], p['R_err']))
         
-        for folder, errors in folders.items():
-            errors = np.array(errors)
-            acc_10 = (errors <= 10).sum() / len(errors)
-            print(f"Folder {folder}: mAcc@10: {acc_10*100:.1f}% ({len(errors)} pairs)")
+    #     for folder, errors in folders.items():
+    #         errors = np.array(errors)
+    #         acc_10 = (errors <= 10).sum() / len(errors)
+    #         print(f"Folder {folder}: mAcc@10: {acc_10*100:.1f}% ({len(errors)} pairs)")
 
+
+# @torch.inference_mode()
+# def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
+#     """
+#         Run relative pose estimation benchmark using a specified matcher function and data loader.
+
+#         Parameters
+#         ----------
+#         matcher_fn : callable
+#             The matching function to be evaluated for pose estimation. It should accept two np.array RGB images (H,W,3)
+#             and return mkpts_0, mkpts_1 which are np.array(N,2) matching coordinates.
+        
+#         loader : iterable
+#             Data loader that provides batches of data. Each batch should contain two images, along 
+#             with their groundtruth camera poses.
+        
+#         ransac_thr : float, optional, default=2.5
+#             The RANSAC threshold for considering a point as an inlier in pixels.
+#     """
+#     pairs = []
+#     cnt = 0
+#     failed_pairs = 0
+    
+#     for d in tqdm.tqdm(loader):
+#         try:
+#             # Move batch to GPU
+#             d = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k,v in d.items()}
+
+#             # Convert images to numpy while still on GPU
+#             img0 = d['image0'][0].permute(1,2,0).cpu().numpy()*255
+#             img1 = d['image1'][0].permute(1,2,0).cpu().numpy()*255
+
+#             src_pts, dst_pts = matcher_fn(img0.astype(np.uint8), img1.astype(np.uint8))
+            
+#             # Clean up GPU memory
+#             del d['image0'], d['image1']
+#             torch.cuda.empty_cache()
+            
+#             # Move other tensors to CPU for processing
+#             d = {k: v.cpu() if isinstance(v, torch.Tensor) else v for k,v in d.items()}
+            
+#             # Rescale keypoints
+#             src_pts = src_pts * d['scale0'].numpy()
+#             dst_pts = dst_pts * d['scale1'].numpy()
+            
+#             if len(src_pts) < 8:
+#                 print(f"Warning: Not enough matches ({len(src_pts)}) for pair {cnt}, skipping...")
+#                 failed_pairs += 1
+#                 continue
+                
+#             d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
+#             compute_pose_error(d)
+#             pairs.append(d)
+            
+#         except Exception as e:
+#             print(f"Error processing pair {cnt}: {e}")
+#             failed_pairs += 1
+            
+#         cnt += 1
 
 @torch.inference_mode()
 def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
@@ -222,47 +281,27 @@ def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
         ransac_thr : float, optional, default=2.5
             The RANSAC threshold for considering a point as an inlier in pixels.
     """
+
+
     pairs = []
     cnt = 0
-    failed_pairs = 0
-    
     for d in tqdm.tqdm(loader):
-        try:
-            # Move batch to GPU
-            d = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k,v in d.items()}
+        d_error = {}
+        src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
 
-            # Convert images to numpy while still on GPU
-            img0 = d['image0'][0].permute(1,2,0).cpu().numpy()*255
-            img1 = d['image1'][0].permute(1,2,0).cpu().numpy()*255
+        #delete images to avoid OOM, happens in low mem machines
+        del d['image0']
+        del d['image1']
 
-            src_pts, dst_pts = matcher_fn(img0.astype(np.uint8), img1.astype(np.uint8))
-            
-            # Clean up GPU memory
-            del d['image0'], d['image1']
-            torch.cuda.empty_cache()
-            
-            # Move other tensors to CPU for processing
-            d = {k: v.cpu() if isinstance(v, torch.Tensor) else v for k,v in d.items()}
-            
-            # Rescale keypoints
-            src_pts = src_pts * d['scale0'].numpy()
-            dst_pts = dst_pts * d['scale1'].numpy()
-            
-            if len(src_pts) < 8:
-                print(f"Warning: Not enough matches ({len(src_pts)}) for pair {cnt}, skipping...")
-                failed_pairs += 1
-                continue
-                
-            d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
-            compute_pose_error(d)
-            pairs.append(d)
-            
-        except Exception as e:
-            print(f"Error processing pair {cnt}: {e}")
-            failed_pairs += 1
-            
-        cnt += 1
+        #rescale kpts
+        src_pts = src_pts * d['scale0'].numpy()
+        dst_pts = dst_pts * d['scale1'].numpy()
+        d.update({"pts0":src_pts, "pts1": dst_pts,'ransac_thr': ransac_thr})
+        compute_pose_error(d)
+        pairs.append(d)
+        cnt+=1
 
+    compute_maa(pairs)
 
 def validate_json_structure(json_file):
     """
