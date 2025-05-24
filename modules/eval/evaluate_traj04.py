@@ -154,9 +154,11 @@ def main():
     )
 
     results = {}
-    checkpoint_iterator = tqdm(checkpoint_files, desc="Processing checkpoints", dynamic_ncols=True)
-    
-    for checkpoint_file in checkpoint_iterator:
+    # checkpoint_iterator = tqdm(checkpoint_files, desc="Processing checkpoints", dynamic_ncols=True)
+    if not checkpoint_files:
+        print(f"No checkpoint files found in {args.checkpoint_dir}")
+        return
+    for checkpoint_file in checkpoint_files:
         checkpoint_path = os.path.join(args.checkpoint_dir, checkpoint_file)
         step = extract_step_from_filename(checkpoint_file)
         
