@@ -23,8 +23,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Validate and visualize XFeat model checkpoints")
     parser.add_argument('--dataset-dir', type=str, required=True,
                         help="Path to dataset root")
+    
     parser.add_argument('--checkpoint-dir', type=str, default='weights/checkpoints',
                         help="Directory containing model checkpoints")
+    parser.add_argument('--json-file', type=str, required=True,
+                        help="Path to JSON file with camera calibration and pose information")
     parser.add_argument('--ransac-thr', type=float, default=2.5,
                         help="RANSAC threshold value in pixels (default: 2.5)")
     parser.add_argument('--use-star', action='store_true',
