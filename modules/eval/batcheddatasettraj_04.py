@@ -188,20 +188,20 @@ def compute_maa(pairs, thresholds=[5, 10, 20]):
         acc = (errors <= t).sum() / len(errors)
         print("mAcc@%d: %.1f "%(t, acc*100))
     
-    # Additionally, compute per-folder performance
-    # if len(pairs) > 0 and 'scene_id' in pairs[0]:
-    #     print("\nPer-folder performance:")
-    #     folders = {}
-    #     for p in pairs:
-    #         scene_id = p['scene_id']
-    #         if scene_id not in folders:
-    #             folders[scene_id] = []
-    #         folders[scene_id].append(max(p['t_err'], p['R_err']))
+#     Additionally, compute per-folder performance
+#     if len(pairs) > 0 and 'scene_id' in pairs[0]:
+#         print("\nPer-folder performance:")
+#         folders = {}
+#         for p in pairs:
+#             scene_id = p['scene_id']
+#             if scene_id not in folders:
+#                 folders[scene_id] = []
+#             folders[scene_id].append(max(p['t_err'], p['R_err']))
         
-    #     for folder, errors in folders.items():
-    #         errors = np.array(errors)
-    #         acc_10 = (errors <= 10).sum() / len(errors)
-    #         print(f"Folder {folder}: mAcc@10: {acc_10*100:.1f}% ({len(errors)} pairs)")
+#         for folder, errors in folders.items():
+#             errors = np.array(errors)
+#             acc_10 = (errors <= 10).sum() / len(errors)
+#             print(f"Folder {folder}: mAcc@10: {acc_10*100:.1f}% ({len(errors)} pairs)")
 
 
 # @torch.inference_mode()
