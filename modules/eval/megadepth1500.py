@@ -154,6 +154,7 @@ def compute_pose_error(pair):
 
         pair['R_err'] = R_err
         pair['t_err'] = t_err
+        print(f"Pair {pair['pair_id']}: R_err = {R_err:.2f}, t_err = {t_err:.2f}, inliers = {len(inliers)}")
 
 
 def error_auc(errors, thresholds=[5, 10, 20]):
