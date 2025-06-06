@@ -149,7 +149,8 @@ def compute_pose_error(pair):
 
     if ret is not None:
         R, t, inliers = ret
-
+        print(f"Estimated pose for pair {pair['pair_id']}: R = {R}, t = {t}, inliers = {len(inliers)}")
+        print(f"Ground truth pose for pair {pair['pair_id']}: T_0to1 = {T_0to1}")
         t_err, R_err = relative_pose_error(T_0to1, R, t, ignore_gt_t_thr=0.0)
 
         pair['R_err'] = R_err
