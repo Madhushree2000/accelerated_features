@@ -88,7 +88,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -214,7 +213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -340,7 +338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -466,7 +463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -592,7 +588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -718,7 +713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -844,7 +838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -970,7 +963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -1096,7 +1088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -1222,7 +1213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -1348,7 +1338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -1474,7 +1463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -1600,7 +1588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -1726,7 +1713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -1852,7 +1838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -1978,7 +1963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -2104,7 +2088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -2230,7 +2213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -2356,7 +2338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -2482,7 +2463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -2608,7 +2588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -2734,7 +2713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -2860,7 +2838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -2986,7 +2963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -3112,7 +3088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -3238,7 +3213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -3364,7 +3338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -3490,7 +3463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -3616,7 +3588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -3742,7 +3713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -3868,7 +3838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -3994,7 +3963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -4120,7 +4088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -4246,7 +4213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -4372,7 +4338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -4498,7 +4463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -4624,7 +4588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -4750,7 +4713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -4876,7 +4838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -5002,7 +4963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -5128,7 +5088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -5254,7 +5213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -5380,7 +5338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -5506,7 +5463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -5632,7 +5588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -5758,7 +5713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -5884,7 +5838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -6010,7 +5963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -6136,7 +6088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -6262,7 +6213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -6388,7 +6338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -6514,7 +6463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -6640,7 +6588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -6766,7 +6713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -6892,7 +6838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -7018,7 +6963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -7144,7 +7088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -7270,7 +7213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -7396,7 +7338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -7522,7 +7463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -7648,7 +7588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -7774,7 +7713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -7900,7 +7838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -8026,7 +7963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -8152,7 +8088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -8278,7 +8213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -8404,7 +8338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -8530,7 +8463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -8656,7 +8588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -8782,7 +8713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -8908,7 +8838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -9034,7 +8963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -9160,7 +9088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -9286,7 +9213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -9412,7 +9338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -9538,7 +9463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -9664,7 +9588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -9790,7 +9713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -9916,7 +9838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -10042,7 +9963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -10168,7 +10088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -10294,7 +10213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -10420,7 +10338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -10546,7 +10463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -10672,7 +10588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -10798,7 +10713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -10924,7 +10838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -11050,7 +10963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -11176,7 +11088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -11302,7 +11213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -11428,7 +11338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -11554,7 +11463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -11680,7 +11588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -11806,7 +11713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -11932,7 +11838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -12058,7 +11963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -12184,7 +12088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -12310,7 +12213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -12436,7 +12338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -12562,7 +12463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -12688,7 +12588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -12814,7 +12713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -12940,7 +12838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -13066,7 +12963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -13192,7 +13088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -13318,7 +13213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -13444,7 +13338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -13570,7 +13463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -13696,7 +13588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -13822,7 +13713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -13948,7 +13838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -14074,7 +13963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -14200,7 +14088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -14326,7 +14213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -14452,7 +14338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -14578,7 +14463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -14704,7 +14588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -14830,7 +14713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -14956,7 +14838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -15082,7 +14963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -15208,7 +15088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -15334,7 +15213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -15460,7 +15338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -15586,7 +15463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -15712,7 +15588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -15838,7 +15713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -15964,7 +15838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -16090,7 +15963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -16216,7 +16088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -16342,7 +16213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -16468,7 +16338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -16594,7 +16463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -16720,7 +16588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -16846,7 +16713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -16972,7 +16838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -17098,7 +16963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -17224,7 +17088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -17350,7 +17213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -17476,7 +17338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -17602,7 +17463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -17728,7 +17588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -17854,7 +17713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -17980,7 +17838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -18106,7 +17963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -18232,7 +18088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -18358,7 +18213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -18484,7 +18338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -18610,7 +18463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -18736,7 +18588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -18862,7 +18713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -18988,7 +18838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -19114,7 +18963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -19240,7 +19088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -19366,7 +19213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -19492,7 +19338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -19618,7 +19463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -19744,7 +19588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -19870,7 +19713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -19996,7 +19838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -20122,7 +19963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -20248,7 +20088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -20374,7 +20213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -20500,7 +20338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -20626,7 +20463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -20752,7 +20588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -20878,7 +20713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -21004,7 +20838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -21130,7 +20963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -21256,7 +21088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -21382,7 +21213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -21508,7 +21338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -21634,7 +21463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -21760,7 +21588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -21886,7 +21713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -22012,7 +21838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -22138,7 +21963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -22264,7 +22088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -22390,7 +22213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -22516,7 +22338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -22642,7 +22463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -22768,7 +22588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -22894,7 +22713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -23020,7 +22838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -23146,7 +22963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -23272,7 +23088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -23398,7 +23213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -23524,7 +23338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -23650,7 +23463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -23776,7 +23588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -23902,7 +23713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -24028,7 +23838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -24154,7 +23963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -24280,7 +24088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -24406,7 +24213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -24532,7 +24338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -24658,7 +24463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -24784,7 +24588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -24910,7 +24713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -25036,7 +24838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -25162,7 +24963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -25288,7 +25088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -25414,7 +25213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -25540,7 +25338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -25666,7 +25463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -25792,7 +25588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -25918,7 +25713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -26044,7 +25838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -26170,7 +25963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -26296,7 +26088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -26422,7 +26213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -26548,7 +26338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -26674,7 +26463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -26800,7 +26588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -26926,7 +26713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -27052,7 +26838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -27178,7 +26963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -27304,7 +27088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -27430,7 +27213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -27556,7 +27338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -27682,7 +27463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -27808,7 +27588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -27934,7 +27713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -28060,7 +27838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -28186,7 +27963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -28312,7 +28088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -28438,7 +28213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -28564,7 +28338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -28690,7 +28463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -28816,7 +28588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -28942,7 +28713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -29068,7 +28838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -29194,7 +28963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -29320,7 +29088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -29446,7 +29213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -29572,7 +29338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -29698,7 +29463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -29824,7 +29588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -29950,7 +29713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -30076,7 +29838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -30202,7 +29963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -30328,7 +30088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -30454,7 +30213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -30580,7 +30338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -30706,7 +30463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -30832,7 +30588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -30958,7 +30713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -31084,7 +30838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -31210,7 +30963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -31336,7 +31088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -31462,7 +31213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -31588,7 +31338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -31714,7 +31463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -31840,7 +31588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -31966,7 +31713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -32092,7 +31838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -32218,7 +31963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -32344,7 +32088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -32470,7 +32213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -32596,7 +32338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -32722,7 +32463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -32848,7 +32588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -32974,7 +32713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -33100,7 +32838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -33226,7 +32963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -33352,7 +33088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -33478,7 +33213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -33604,7 +33338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -33730,7 +33463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -33856,7 +33588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -33982,7 +33713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -34108,7 +33838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -34234,7 +33963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -34360,7 +34088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -34486,7 +34213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -34612,7 +34338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -34738,7 +34463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -34864,7 +34588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -34990,7 +34713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -35116,7 +34838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -35242,7 +34963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -35368,7 +35088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -35494,7 +35213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -35620,7 +35338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -35746,7 +35463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -35872,7 +35588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -35998,7 +35713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -36124,7 +35838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -36250,7 +35963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -36376,7 +36088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -36502,7 +36213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -36628,7 +36338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -36754,7 +36463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -36880,7 +36588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -37006,7 +36713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -37132,7 +36838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -37258,7 +36963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -37384,7 +37088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -37510,7 +37213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -37636,7 +37338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -37762,7 +37463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -37888,7 +37588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -38014,7 +37713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -38140,7 +37838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -38266,7 +37963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -38392,7 +38088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -38518,7 +38213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -38644,7 +38338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -38770,7 +38463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -38896,7 +38588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -39022,7 +38713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -39148,7 +38838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -39274,7 +38963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -39400,7 +39088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -39526,7 +39213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -39652,7 +39338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -39778,7 +39463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -39904,7 +39588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -40030,7 +39713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -40156,7 +39838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -40282,7 +39963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -40408,7 +40088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -40534,7 +40213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -40660,7 +40338,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -40786,7 +40463,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -40912,7 +40588,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -41038,7 +40713,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -41164,7 +40838,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -41290,7 +40963,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -41416,7 +41088,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
@@ -41542,7 +41213,6 @@
         1.0
       ]
     ],
-    "distortion_model": "equidistant",
     "distortion_coeffs0": [
       0.04816514299784573,
       0.1707359987229406,
