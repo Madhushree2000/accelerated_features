@@ -168,21 +168,20 @@ def estimate_pose_poselib(kpts0, kpts1, K0, K1, thresh, conf=0.99999,
         undistort_matches: Whether to undistort keypoints before pose estimation
     """
     
-    # Optionally undistort the matched keypoints
-    if undistort_matches and distortion_coeffs0 is not None and distortion_coeffs1 is not None:
-        print("Undistorting matched keypoints...")
-        kpts0_undist = undistort_points_equidistant(kpts0, K0, distortion_coeffs0)
-        kpts1_undist = undistort_points_equidistant(kpts1, K1, distortion_coeffs1)
-        
-        # Use undistorted points with pinhole camera model
-        camera0 = intrinsics_to_camera(K0)
-        camera1 = intrinsics_to_camera(K1)
-        kpts0_final, kpts1_final = kpts0_undist, kpts1_undist
-    else:
-        # Use original points with distorted camera model
-        camera0 = intrinsics_to_camera(K0, distortion_coeffs0)
-        camera1 = intrinsics_to_camera(K1, distortion_coeffs1)
-        kpts0_final, kpts1_final = kpts0, kpts1
+    
+    print("Undistorting matched keypoints...")
+    kpts0_undist = undistort_points_equidistant(kpts0, K0, distortion_coeffs0)
+    kpts1_undist = undistort_points_equidistant(kpts1, K1, distortion_coeffs1)
+    
+    # Use undistorted points with pinhole camera model
+    camera0 = intrinsics_to_camera(K0)
+    camera1 = intrinsics_to_camera(K1)
+    kpts0_final, kpts1_final = kpts0_undist, kpts1_undist
+    # else:
+    #     # Use original points with distorted camera model
+    #     camera0 = intrinsics_to_camera(K0, distortion_coeffs0)
+    #     camera1 = intrinsics_to_camera(K1, distortion_coeffs1)
+    #     kpts0_final, kpts1_final = kpts0, kpts1
     
     try:
         M, info = poselib.estimate_relative_pose(
