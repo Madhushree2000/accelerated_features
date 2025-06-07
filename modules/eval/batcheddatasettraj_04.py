@@ -148,6 +148,7 @@ def undistort_points_equidistant(points, K, distortion_coeffs):
             D,
             P=K.astype(np.float32)
         )
+        print("Undistorted points shape:", points_undistorted.shape)
         return points_undistorted.reshape(-1, 2)
     else:
         print("Warning: Insufficient distortion coefficients, returning original points")
@@ -175,8 +176,8 @@ def estimate_pose_poselib(kpts0, kpts1, K0, K1, thresh, conf=0.99999,
     kpts1_undist = undistort_points_equidistant(kpts1, K1, distortion_coeffs1)
     
     # Use undistorted points with pinhole camera model
-    camera0 = intrinsics_to_camera(K0)
-    camera1 = intrinsics_to_camera(K1)
+    camera0 = intrinsics_to_camera(K0,distortion_coeffs0)
+    camera1 = intrinsics_to_camera(K1,distortion_coeffs1)
     kpts0_final, kpts1_final = kpts0_undist, kpts1_undist
     # else:
     #     # Use original points with distorted camera model
@@ -184,25 +185,24 @@ def estimate_pose_poselib(kpts0, kpts1, K0, K1, thresh, conf=0.99999,
     #     camera1 = intrinsics_to_camera(K1, distortion_coeffs1)
     #     kpts0_final, kpts1_final = kpts0, kpts1
     
-    try:
-        M, info = poselib.estimate_relative_pose(
-            kpts0_final, kpts1_final,
-            camera0, camera1,
-            {"max_epipolar_error": thresh,
-             "success_prob": conf,
-             "min_iterations": 20,
-             "max_iterations": 1_000},
-        )
+    
+    M, info = poselib.estimate_relative_pose(
+        kpts0_final, kpts1_final,
+        camera0, camera1,
+        {"max_epipolar_error": thresh,
+            "success_prob": conf,
+            "min_iterations": 20,
+            "max_iterations": 1_000},
+    )
 
-        R, t, inl = M.R, M.t, info["inliers"]
-        norm_t = np.linalg.norm(t)
-        unit_t = t / norm_t
-        inl = np.array(inl)
-        ret = (R, unit_t, inl)
+    print("PoseLib estimation info:", info)
+
+    R, t, inl = M.R, M.t, info["inliers"]
+    norm_t = np.linalg.norm(t)
+    unit_t = t / norm_t
+    inl = np.array(inl)
+    ret = (R, unit_t, inl)
         
-    except Exception as e:
-        print(f"PoseLib estimation failed: {e}")
-        ret = None
 
     return ret, (kpts0_final, kpts1_final)
 
