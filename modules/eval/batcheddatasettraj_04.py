@@ -96,21 +96,26 @@ def relative_pose_error(T_0to1, R, t, ignore_gt_t_thr=0.0):
     return t_err, R_err
 
 
-def intrinsics_to_camera(K):
+def intrinsics_to_camera(K, distortion=None, model="OPENCV_FISHEYE"):
     px, py = K[0, 2], K[1, 2]
     fx, fy = K[0, 0], K[1, 1]
+
+    if distortion is None:
+        distortion = [0, 0, 0, 0]  # Default if not provided
+
     return {
-        "model": "PINHOLE",
+        "model": model,
         "width": int(2 * px),
         "height": int(2 * py),
-        "params": [fx, fy, px, py],
+        "params": [fx, fy, px, py] + distortion,
     }
 
-def estimate_pose_poselib(kpts0, kpts1, K0, K1, thresh, conf=0.99999):
+
+def estimate_pose_poselib(kpts0, kpts1, K0, K1, distortion0,distortion1, thresh, conf=0.99999):
     M, info = poselib.estimate_relative_pose(
         kpts0, kpts1,
-        intrinsics_to_camera(K0),
-        intrinsics_to_camera(K1),
+        intrinsics_to_camera(K0, distortion0),
+        intrinsics_to_camera(K1, distortion1),
         {"max_epipolar_error": thresh,
          "success_prob": conf,
          "min_iterations": 20,
@@ -138,8 +143,10 @@ def compute_pose_error(pair):
     K0 = pair['K0'].numpy()[0]  # Already on CPU from previous step
     K1 = pair['K1'].numpy()[0]
     T_0to1 = pair['T_0to1'].numpy()[0]
+    distortion0 = pair['distortion_coeffs0'].numpy()[0]
+    distortion1 = pair['distortion_coeffs1'].numpy()[0]  
 
-    ret, corrs = estimate_pose_poselib(pts0, pts1, K0, K1, pixel_thr, conf=conf)
+    ret, corrs = estimate_pose_poselib(pts0, pts1, K0, K1, distortion0, distortion1, pixel_thr, conf=conf)
 
     if ret is not None:
         R, t, inliers = ret
