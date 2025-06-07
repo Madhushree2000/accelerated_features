@@ -221,8 +221,9 @@ def compute_pose_error(pair):
     K1 = pair['K1'].numpy()[0]
     T_0to1 = pair['T_0to1'].numpy()[0]
     distortion_coeffs0 = pair['distortion_coeffs0'].numpy()[0]
+    print("distortion_coeffs0:", distortion_coeffs0)
     distortion_coeffs1 = pair['distortion_coeffs1'].numpy()[0]
-
+    print("distortion_coeffs1:", distortion_coeffs1)
     ret, corrs = estimate_pose_poselib(pts0, pts1, K0, K1, pixel_thr, conf, distortion_coeffs0,distortion_coeffs1)
 
     if ret is not None:
