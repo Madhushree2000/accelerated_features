@@ -13,7 +13,6 @@ import tqdm
 import json
 from pathlib import Path
 import matplotlib.pyplot as plt
-
 # Import the necessary modules from your code
 from modules.xfeat import XFeat
 from modules.eval.batcheddatasettraj_04 import CustomDataset, compute_pose_error, tensor2bgr
@@ -49,6 +48,21 @@ def extract_step_from_filename(filename):
     return 0
 
 
+def visualize_keypoints(img, kpts, title="Keypoints"):
+    """Visualize keypoints on the image."""
+    import cv2
+    img_draw = img.copy()
+    for pt in kpts:
+        x, y = int(pt[0]), int(pt[1])
+        cv2.circle(img_draw, (x, y), 2, (0, 255, 0), -1)
+    img_draw = cv2.cvtColor(img_draw, cv2.COLOR_BGR2RGB)
+    plt.figure(figsize=(6, 6))
+    plt.imshow(img_draw)
+    plt.title(title)
+    plt.axis('off')
+    plt.show()
+
+
 def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_thr=2.5):
     """Run validation for a single checkpoint and return metrics."""
     print(f"Validating checkpoint: {checkpoint_path}")
@@ -56,19 +70,27 @@ def run_validation_for_checkpoint(checkpoint_path, matcher_fn, loader, ransac_th
     pairs = []
     for d in tqdm.tqdm(loader):
         try:
-            src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
+            img0 = tensor2bgr(d['image0'])
+            img1 = tensor2bgr(d['image1'])
 
-            # Delete images to avoid OOM
-            del d['image0']
-            del d['image1']
+            src_pts, dst_pts = matcher_fn(img0, img1)
+
+            # Visualize keypoints
+            print("Displaying keypoints for current image pair...")
+            visualize_keypoints(img0, src_pts, title="Image 0 Keypoints")
+            visualize_keypoints(img1, dst_pts, title="Image 1 Keypoints")
 
             # Rescale keypoints
             src_pts = src_pts * d['scale0'].numpy()
             dst_pts = dst_pts * d['scale1'].numpy()
-            
+
             d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
             compute_pose_error(d)
             pairs.append(d)
+
+            # Delete images to save memory
+            del d['image0']
+            del d['image1']
         except Exception as e:
             print(f"Error processing image pair: {e}")
             continue
