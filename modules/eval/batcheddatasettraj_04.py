@@ -5,6 +5,7 @@
     Camera pose metrics adapted from LoFTR https://github.com/zju3dv/LoFTR/blob/master/src/utils/metrics.py
     
     Modified to work with a custom dataset structure of 36 folders with 12 images each.
+    Added support for equidistant (fisheye) camera distortion model.
 """
 
 import argparse, glob, sys, os, time
@@ -32,6 +33,7 @@ class CustomDataset(Dataset):
     """
     Custom dataset loader for a dataset with 36 folders, each containing 12 images.
     The camera poses & metadata are stored in a formatted json similar to MegaDepth1500.
+    Supports both pinhole and equidistant (fisheye) camera models.
     """
     def __init__(self, json_file, root_dir):
         # Load the info & calibration from the JSON
@@ -43,6 +45,16 @@ class CustomDataset(Dataset):
         if not os.path.exists(self.root_dir):
             raise RuntimeError(
             f"Dataset {self.root_dir} does not exist! Please check the path provided.")
+
+        # Check if dataset uses distortion coefficients
+        self.has_distortion = False
+        if len(self.data) > 0:
+            sample = self.data[0]
+            if 'distortion_coeffs0' in sample and 'distortion_coeffs1' in sample:
+                self.has_distortion = True
+                print("Dataset detected with equidistant (fisheye) camera distortion")
+            else:
+                print("Dataset detected with pinhole camera model (no distortion)")
 
         # Print dataset statistics
         num_folders = len(set([item['scene_id'] for item in self.data])) if len(self.data) > 0 else 0
@@ -96,44 +108,132 @@ def relative_pose_error(T_0to1, R, t, ignore_gt_t_thr=0.0):
     return t_err, R_err
 
 
-def intrinsics_to_camera(K, distortion=None, model="OPENCV_FISHEYE"):
+def intrinsics_to_camera(K, distortion_coeffs=None):
+    """
+    Convert intrinsic matrix and distortion coefficients to PoseLib camera format.
+    Supports both pinhole and equidistant (fisheye) camera models.
+    
+    Args:
+        K: 3x3 intrinsic matrix
+        distortion_coeffs: List of distortion coefficients for equidistant model [k1, k2, k3, k4]
+                          If None, uses pinhole model
+    """
     px, py = K[0, 2], K[1, 2]
     fx, fy = K[0, 0], K[1, 1]
+    
+    if distortion_coeffs is not None:
+        # Equidistant (fisheye) camera model
+        # PoseLib expects [fx, fy, cx, cy, k1, k2, k3, k4] for equidistant model
+        return {
+            "model": "SIMPLE_RADIAL_FISHEYE",  # or "OPENCV_FISHEYE" depending on your distortion model
+            "width": int(2 * px),
+            "height": int(2 * py),
+            "params": [fx, fy, px, py] + list(distortion_coeffs),
+        }
+    else:
+        # Standard pinhole camera model
+        return {
+            "model": "PINHOLE",
+            "width": int(2 * px),
+            "height": int(2 * py),
+            "params": [fx, fy, px, py],
+        }
 
-    if distortion is None:
-        distortion = [0, 0, 0, 0]  # Default if not provided
 
-    return {
-        "model": model,
-        "width": int(2 * px),
-        "height": int(2 * py),
-        "params": [fx, fy, px, py] + distortion,
-    }
+def undistort_points_equidistant(points, K, distortion_coeffs):
+    """
+    Undistort points using equidistant (fisheye) camera model.
+    This is needed if the matcher returns distorted coordinates.
+    
+    Args:
+        points: Nx2 array of pixel coordinates
+        K: 3x3 intrinsic matrix
+        distortion_coeffs: List of 4 distortion coefficients [k1, k2, k3, k4]
+    
+    Returns:
+        undistorted_points: Nx2 array of undistorted pixel coordinates
+    """
+    if len(distortion_coeffs) >= 4:
+        # Use OpenCV's fisheye undistortion
+        # Note: OpenCV fisheye model may differ slightly from equidistant model
+        # You might need to adjust this based on your specific calibration
+        D = np.array(distortion_coeffs[:4], dtype=np.float32)
+        points_undistorted = cv2.fisheye.undistortPoints(
+            points.reshape(-1, 1, 2).astype(np.float32), 
+            K.astype(np.float32), 
+            D,
+            P=K.astype(np.float32)
+        )
+        return points_undistorted.reshape(-1, 2)
+    else:
+        print("Warning: Insufficient distortion coefficients, returning original points")
+        return points
 
 
-def estimate_pose_poselib(kpts0, kpts1, K0, K1, distortion0,distortion1, thresh, conf=0.99999):
-    M, info = poselib.estimate_relative_pose(
-        kpts0, kpts1,
-        intrinsics_to_camera(K0, distortion0),
-        intrinsics_to_camera(K1, distortion1),
-        {"max_epipolar_error": thresh,
-         "success_prob": conf,
-         "min_iterations": 20,
-         "max_iterations": 1_000},
-    )
+def estimate_pose_poselib(kpts0, kpts1, K0, K1, thresh, conf=0.99999, 
+                         distortion_coeffs0=None, distortion_coeffs1=None, 
+                         undistort_matches=False):
+    """
+    Estimate relative pose using PoseLib with support for distorted cameras.
+    
+    Args:
+        kpts0, kpts1: Matched keypoints
+        K0, K1: Intrinsic matrices
+        thresh: RANSAC threshold
+        conf: Confidence level
+        distortion_coeffs0, distortion_coeffs1: Distortion coefficients (optional)
+        undistort_matches: Whether to undistort keypoints before pose estimation
+    """
+    
+    # Optionally undistort the matched keypoints
+    if undistort_matches and distortion_coeffs0 is not None and distortion_coeffs1 is not None:
+        print("Undistorting matched keypoints...")
+        kpts0_undist = undistort_points_equidistant(kpts0, K0, distortion_coeffs0)
+        kpts1_undist = undistort_points_equidistant(kpts1, K1, distortion_coeffs1)
+        
+        # Use undistorted points with pinhole camera model
+        camera0 = intrinsics_to_camera(K0)
+        camera1 = intrinsics_to_camera(K1)
+        kpts0_final, kpts1_final = kpts0_undist, kpts1_undist
+    else:
+        # Use original points with distorted camera model
+        camera0 = intrinsics_to_camera(K0, distortion_coeffs0)
+        camera1 = intrinsics_to_camera(K1, distortion_coeffs1)
+        kpts0_final, kpts1_final = kpts0, kpts1
+    
+    try:
+        M, info = poselib.estimate_relative_pose(
+            kpts0_final, kpts1_final,
+            camera0, camera1,
+            {"max_epipolar_error": thresh,
+             "success_prob": conf,
+             "min_iterations": 20,
+             "max_iterations": 1_000},
+        )
 
-    R, t, inl = M.R, M.t, info["inliers"]
-    inl = np.array(inl)
-    ret = (R, t, inl)
+        R, t, inl = M.R, M.t, info["inliers"]
+        inl = np.array(inl)
+        ret = (R, t, inl)
+        
+    except Exception as e:
+        print(f"PoseLib estimation failed: {e}")
+        ret = None
 
-    return ret, (kpts0, kpts1)
+    return ret, (kpts0_final, kpts1_final)
 
 
 def tensor2bgr(t):
     return (t.cpu()[0].permute(1,2,0).numpy()*255).astype(np.uint8)
 
 
-def compute_pose_error(pair):
+def compute_pose_error(pair, undistort_matches=False):
+    """
+    Compute pose error with support for distorted camera models.
+    
+    Args:
+        pair: Data pair containing keypoints, intrinsics, and ground truth
+        undistort_matches: Whether to undistort keypoints before pose estimation
+    """
     pixel_thr = 1.0 if 'ransac_thr' not in pair else pair['ransac_thr']
     conf = 0.99999
     pair.update({'R_err':  np.inf, 't_err': np.inf, 'inliers': []})
@@ -143,10 +243,20 @@ def compute_pose_error(pair):
     K0 = pair['K0'].numpy()[0]  # Already on CPU from previous step
     K1 = pair['K1'].numpy()[0]
     T_0to1 = pair['T_0to1'].numpy()[0]
-    distortion0 = pair['distortion_coeffs0'].numpy()[0]
-    distortion1 = pair['distortion_coeffs1'].numpy()[0]  
+    
+    # Get distortion coefficients if available
+    distortion_coeffs0 = None
+    distortion_coeffs1 = None
+    if 'distortion_coeffs0' in pair and 'distortion_coeffs1' in pair:
+        distortion_coeffs0 = pair['distortion_coeffs0'].numpy()[0] if hasattr(pair['distortion_coeffs0'], 'numpy') else pair['distortion_coeffs0']
+        distortion_coeffs1 = pair['distortion_coeffs1'].numpy()[0] if hasattr(pair['distortion_coeffs1'], 'numpy') else pair['distortion_coeffs1']
 
-    ret, corrs = estimate_pose_poselib(pts0, pts1, K0, K1, distortion0, distortion1, pixel_thr, conf=conf)
+    ret, corrs = estimate_pose_poselib(
+        pts0, pts1, K0, K1, pixel_thr, conf=conf,
+        distortion_coeffs0=distortion_coeffs0,
+        distortion_coeffs1=distortion_coeffs1,
+        undistort_matches=undistort_matches
+    )
 
     if ret is not None:
         R, t, inliers = ret
@@ -155,7 +265,9 @@ def compute_pose_error(pair):
         t_err, R_err = relative_pose_error(T_0to1, R, t, ignore_gt_t_thr=0.0)
         pair['R_err'] = R_err
         pair['t_err'] = t_err
+        pair['inliers'] = inliers
         print(f"Pair {pair['pair_id']}: R_err = {R_err:.2f}, t_err = {t_err:.2f}, inliers = {len(inliers)}")
+
 
 def error_auc(errors, thresholds=[5, 10, 20]):
     """
@@ -196,84 +308,10 @@ def compute_maa(pairs, thresholds=[5, 10, 20]):
     for t in thresholds:
         acc = (errors <= t).sum() / len(errors)
         print("mAcc@%d: %.1f "%(t, acc*100))
-    
-#     Additionally, compute per-folder performance
-#     if len(pairs) > 0 and 'scene_id' in pairs[0]:
-#         print("\nPer-folder performance:")
-#         folders = {}
-#         for p in pairs:
-#             scene_id = p['scene_id']
-#             if scene_id not in folders:
-#                 folders[scene_id] = []
-#             folders[scene_id].append(max(p['t_err'], p['R_err']))
-        
-#         for folder, errors in folders.items():
-#             errors = np.array(errors)
-#             acc_10 = (errors <= 10).sum() / len(errors)
-#             print(f"Folder {folder}: mAcc@10: {acc_10*100:.1f}% ({len(errors)} pairs)")
 
-
-# @torch.inference_mode()
-# def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
-#     """
-#         Run relative pose estimation benchmark using a specified matcher function and data loader.
-
-#         Parameters
-#         ----------
-#         matcher_fn : callable
-#             The matching function to be evaluated for pose estimation. It should accept two np.array RGB images (H,W,3)
-#             and return mkpts_0, mkpts_1 which are np.array(N,2) matching coordinates.
-        
-#         loader : iterable
-#             Data loader that provides batches of data. Each batch should contain two images, along 
-#             with their groundtruth camera poses.
-        
-#         ransac_thr : float, optional, default=2.5
-#             The RANSAC threshold for considering a point as an inlier in pixels.
-#     """
-#     pairs = []
-#     cnt = 0
-#     failed_pairs = 0
-    
-#     for d in tqdm.tqdm(loader):
-#         try:
-#             # Move batch to GPU
-#             d = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k,v in d.items()}
-
-#             # Convert images to numpy while still on GPU
-#             img0 = d['image0'][0].permute(1,2,0).cpu().numpy()*255
-#             img1 = d['image1'][0].permute(1,2,0).cpu().numpy()*255
-
-#             src_pts, dst_pts = matcher_fn(img0.astype(np.uint8), img1.astype(np.uint8))
-            
-#             # Clean up GPU memory
-#             del d['image0'], d['image1']
-#             torch.cuda.empty_cache()
-            
-#             # Move other tensors to CPU for processing
-#             d = {k: v.cpu() if isinstance(v, torch.Tensor) else v for k,v in d.items()}
-            
-#             # Rescale keypoints
-#             src_pts = src_pts * d['scale0'].numpy()
-#             dst_pts = dst_pts * d['scale1'].numpy()
-            
-#             if len(src_pts) < 8:
-#                 print(f"Warning: Not enough matches ({len(src_pts)}) for pair {cnt}, skipping...")
-#                 failed_pairs += 1
-#                 continue
-                
-#             d.update({"pts0": src_pts, "pts1": dst_pts, 'ransac_thr': ransac_thr})
-#             compute_pose_error(d)
-#             pairs.append(d)
-            
-#         except Exception as e:
-#             print(f"Error processing pair {cnt}: {e}")
-#             failed_pairs += 1
-            
-#         cnt += 1
 
 @torch.inference_mode()
-def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
+def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5, undistort_matches=False):
     """
         Run relative pose estimation benchmark using a specified matcher function and data loader.
 
@@ -289,28 +327,49 @@ def run_pose_benchmark(matcher_fn, loader, ransac_thr=2.5):
         
         ransac_thr : float, optional, default=2.5
             The RANSAC threshold for considering a point as an inlier in pixels.
+            
+        undistort_matches : bool, optional, default=False
+            Whether to undistort matched keypoints before pose estimation.
+            If True, keypoints are undistorted and pinhole model is used.
+            If False, original keypoints are used with distorted camera model.
     """
-
 
     pairs = []
     cnt = 0
+    failed_pairs = 0
+    
     for d in tqdm.tqdm(loader):
-        d_error = {}
-        src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
+        try:
+            src_pts, dst_pts = matcher_fn(tensor2bgr(d['image0']), tensor2bgr(d['image1']))
 
-        #delete images to avoid OOM, happens in low mem machines
-        del d['image0']
-        del d['image1']
+            #delete images to avoid OOM, happens in low mem machines
+            del d['image0']
+            del d['image1']
 
-        #rescale kpts
-        src_pts = src_pts * d['scale0'].numpy()
-        dst_pts = dst_pts * d['scale1'].numpy()
-        d.update({"pts0":src_pts, "pts1": dst_pts,'ransac_thr': ransac_thr})
-        compute_pose_error(d)
-        pairs.append(d)
-        cnt+=1
+            #rescale kpts
+            src_pts = src_pts * d['scale0'].numpy()
+            dst_pts = dst_pts * d['scale1'].numpy()
+            
+            if len(src_pts) < 8:
+                print(f"Warning: Not enough matches ({len(src_pts)}) for pair {cnt}, skipping...")
+                failed_pairs += 1
+                cnt += 1
+                continue
+            
+            d.update({"pts0":src_pts, "pts1": dst_pts,'ransac_thr': ransac_thr})
+            compute_pose_error(d, undistort_matches=undistort_matches)
+            pairs.append(d)
+            
+        except Exception as e:
+            print(f"Error processing pair {cnt}: {e}")
+            failed_pairs += 1
+            
+        cnt += 1
 
+    print(f"\nProcessed {cnt} pairs, {failed_pairs} failed, {len(pairs)} successful")
     compute_maa(pairs)
+    return pairs
+
 
 def validate_json_structure(json_file):
     """
@@ -337,7 +396,13 @@ def validate_json_structure(json_file):
             print("Error: 'pair_names' should be a list with 2 elements")
             return False
             
-        print(f"JSON validation successful: {len(data)} entries found")
+        # Check for distortion coefficients
+        has_distortion = 'distortion_coeffs0' in sample and 'distortion_coeffs1' in sample
+        if has_distortion:
+            print(f"JSON validation successful: {len(data)} entries found with distortion coefficients")
+        else:
+            print(f"JSON validation successful: {len(data)} entries found (pinhole model)")
+            
         return True
         
     except Exception as e:
@@ -357,6 +422,10 @@ def parse_args():
                         help="RANSAC threshold value in pixels (default: 2.5)")
     parser.add_argument('--batch-size', type=int, default=1,
                         help="Batch size for data loader (default: 1)")
+    parser.add_argument('--undistort-matches', action='store_true',
+                        help="Undistort matched keypoints before pose estimation (use with distorted cameras)")
+    parser.add_argument('--top-k', type=int, default=4096,
+                        help="Top-k features for XFeat* (default: 4096)")
     return parser.parse_args()
 
 
@@ -400,6 +469,12 @@ if __name__ == '__main__':
         print(f"Error initializing dataset: {e}")
         sys.exit(1)
 
+    # Print distortion handling mode
+    if args.undistort_matches:
+        print("Mode: Undistorting keypoints before pose estimation (recommended for distorted cameras)")
+    else:
+        print("Mode: Using native distorted camera model in PoseLib")
+
     # Benchmark with selected matcher - CUDA optimized
     results = []
     try:
@@ -415,7 +490,8 @@ if __name__ == '__main__':
             results = run_pose_benchmark(
                 matcher_fn=wrapped_matcher, 
                 loader=loader, 
-                ransac_thr=args.ransac_thr
+                ransac_thr=args.ransac_thr,
+                undistort_matches=args.undistort_matches
             )
             
         elif args.matcher == 'xfeat-star':
@@ -430,7 +506,8 @@ if __name__ == '__main__':
             results = run_pose_benchmark(
                 matcher_fn=wrapped_matcher,
                 loader=loader,
-                ransac_thr=args.ransac_thr
+                ransac_thr=args.ransac_thr,
+                undistort_matches=args.undistort_matches
             )
             
         elif args.matcher == 'alike':
@@ -445,7 +522,8 @@ if __name__ == '__main__':
             results = run_pose_benchmark(
                 matcher_fn=wrapped_matcher,
                 loader=loader,
-                ransac_thr=args.ransac_thr
+                ransac_thr=args.ransac_thr,
+                undistort_matches=args.undistort_matches
             )
             
     except Exception as e:
@@ -465,21 +543,24 @@ if __name__ == '__main__':
             "device": str(device),
             "timestamp": timestamp,
             "dataset": os.path.basename(args.dataset_dir),
-            "num_pairs": len(results)
+            "num_pairs": len(results),
+            "undistort_matches": args.undistort_matches,
+            "has_distortion": dataset.has_distortion if hasattr(dataset, 'has_distortion') else False
         },
         "pair_errors": [
             {
                 'scene_id': p.get('scene_id', 'unknown'),
                 'pair_id': p.get('pair_id', 'unknown'),
-                'R_err': float(p['R_err']),
-                't_err': float(p['t_err']),
-                'num_matches': len(p.get('pts0', [])) if 'pts0' in p else 0
+                'R_err': float(p['R_err']) if not np.isinf(p['R_err']) else None,
+                't_err': float(p['t_err']) if not np.isinf(p['t_err']) else None,
+                'num_matches': len(p.get('pts0', [])) if 'pts0' in p else 0,
+                'num_inliers': len(p.get('inliers', [])) if 'inliers' in p else 0
             } for p in results
         ],
         "statistics": {
-            "mean_R_err": np.mean([p['R_err'] for p in results]),
-            "mean_t_err": np.mean([p['t_err'] for p in results]),
-            "success_rate": len(results)/len(dataset)*100
+            "mean_R_err": float(np.mean([p['R_err'] for p in results if not np.isinf(p['R_err'])])) if results else None,
+            "mean_t_err": float(np.mean([p['t_err'] for p in results if not np.isinf(p['t_err'])])) if results else None,
+            "success_rate": len([p for p in results if not np.isinf(p['R_err'])])/len(dataset)*100 if len(dataset) > 0 else 0
         }
     }
 
