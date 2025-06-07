@@ -140,7 +140,8 @@ def undistort_points_equidistant(points, K, distortion_coeffs):
         # Use OpenCV's fisheye undistortion
         # Note: OpenCV fisheye model may differ slightly from equidistant model
         # You might need to adjust this based on your specific calibration
-        D = np.array(distortion_coeffs[:4], dtype=np.float32)
+        D = distortion_coeffs
+        print("Distortion coefficients in if statement:", D)
         points_undistorted = cv2.fisheye.undistortPoints(
             points.reshape(-1, 1, 2).astype(np.float32), 
             K.astype(np.float32), 
