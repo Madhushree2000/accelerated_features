@@ -139,7 +139,7 @@ def compute_pose_error(pair):
     K1 = pair['K1'].numpy()[0]
     T_0to1 = pair['T_0to1'].numpy()[0]
 
-    ret, corrs = estimate_pose_poselib(pts0, pts1, K0, K1, pixel_thr, conf=conf)
+    ret, corrs = estimate_pose_poselib(pts1, pts0, K0, K1, pixel_thr, conf=conf)
 
     if ret is not None:
         R, t, inliers = ret
