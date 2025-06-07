@@ -141,7 +141,6 @@ def undistort_points_equidistant(points, K, distortion_coeffs):
         # Note: OpenCV fisheye model may differ slightly from equidistant model
         # You might need to adjust this based on your specific calibration
         D = distortion_coeffs
-        print("Distortion coefficients in if statement:", D)
         points_undistorted = cv2.fisheye.undistortPoints(
             points.reshape(-1, 1, 2).astype(np.float32), 
             K.astype(np.float32), 
@@ -195,8 +194,6 @@ def estimate_pose_poselib(kpts0, kpts1, K0, K1, thresh, conf=0.99999,
             "max_iterations": 1_000},
     )
 
-    print("PoseLib estimation info:", info)
-
     R, t, inl = M.R, M.t, info["inliers"]
     norm_t = np.linalg.norm(t)
     unit_t = t / norm_t
@@ -222,9 +219,7 @@ def compute_pose_error(pair):
     K1 = pair['K1'].numpy()[0]
     T_0to1 = pair['T_0to1'].numpy()[0]
     distortion_coeffs0 = pair['distortion_coeffs0'].numpy()[0]
-    print("distortion_coeffs0:", distortion_coeffs0)
     distortion_coeffs1 = pair['distortion_coeffs1'].numpy()[0]
-    print("distortion_coeffs1:", distortion_coeffs1)
     ret, corrs = estimate_pose_poselib(pts0, pts1, K0, K1, pixel_thr, conf, distortion_coeffs0,distortion_coeffs1)
 
     if ret is not None:
