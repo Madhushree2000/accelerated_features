@@ -195,8 +195,10 @@ def estimate_pose_poselib(kpts0, kpts1, K0, K1, thresh, conf=0.99999,
         )
 
         R, t, inl = M.R, M.t, info["inliers"]
+        norm_t = np.linalg.norm(t)
+        unit_t = t / norm_t
         inl = np.array(inl)
-        ret = (R, t, inl)
+        ret = (R, unit_t, inl)
         
     except Exception as e:
         print(f"PoseLib estimation failed: {e}")
@@ -228,6 +230,11 @@ def compute_pose_error(pair):
         R, t, inliers = ret
         print(f"Estimated pose for pair {pair['pair_id']}: R = {R}, t = {t}, inliers = {len(inliers)}")
         print(f"Ground truth pose for pair {pair['pair_id']}: T_0to1 = {T_0to1}")
+        norm_t_gt = np.linalg.norm(T_0to1[:3, 3])
+        unit_t_gt = T_0to1[:3, 3] / norm_t_gt
+        T_0to1[:3,3] = unit_t_gt  # Convert to unit vector for comparison
+        print(f"Normalized ground truth translation: {unit_t_gt}")
+        print(f"T0_1 matrix with Unit translation {T_0to1}")
         t_err, R_err = relative_pose_error(T_0to1, R, t, ignore_gt_t_thr=0.0)
         pair['R_err'] = R_err
         pair['t_err'] = t_err
